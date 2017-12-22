@@ -188,7 +188,7 @@ You can also override these settings with environmental variables in the form of
 
 ## Usage
 
-Prospective users of [Carrot](https://carrot.io/) should get started by going to [Carrot.io](https://carrot.io/). The following usage is **for developers** wanting to work on the OpenCompany Authentication Service.
+Prospective users of [Carrot](https://carrot.io/) should get started by going to [Carrot.io](https://carrot.io/). The following usage is **for developers** wanting to work on the OpenCompany Digest Service.
 
 **Make sure you've updated `project.clj` as described above.**
 

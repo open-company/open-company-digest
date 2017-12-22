@@ -171,5 +171,5 @@
 
   :resource-paths ["resources" ]
 
-  :main oc.auth.app
+  :main oc.digest.app
 )
