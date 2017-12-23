@@ -2,12 +2,13 @@
 
 [![MPL License](http://img.shields.io/badge/license-MPL-blue.svg?style=flat)](https://www.mozilla.org/MPL/2.0/)
 [![Build Status](https://travis-ci.org/open-company/open-company-digest.svg)](https://travis-ci.org/open-company/open-company-digest)
+[![Dependencies Status](https://versions.deps.co/open-company/open-company-digest/status.svg)](https://versions.deps.co/open-company/open-company-digest)
 
 ## Background
 
-> I've come to learn there is a virtuous cycle to transparency and a very vicious cycle of obfuscation.
+> The single most important ingredient in the recipe for success is transparency because transparency builds trust.
 
-> -- [Jeff Weiner](https://www.linkedin.com/in/jeffweiner08)
+> -- [Denise Morrison](https://en.wikipedia.org/wiki/Denise_Morrison)
 
 Companies struggle to keep everyone on the same page. People are hyper-connected in the moment but still don’t know what’s happening across the company. Employees and investors, co-founders and execs, customers and community, they all want more transparency. The solution is surprisingly simple and effective - great company updates that build transparency and alignment.
 

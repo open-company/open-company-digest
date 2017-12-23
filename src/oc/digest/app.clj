@@ -2,6 +2,8 @@
   "Namespace for the web application which serves the REST API."
   (:gen-class)
   (:require
+    [defun.core :refer (defun-)]
+    [if-let.core :refer (if-let*)]
     [raven-clj.core :as sentry]
     [raven-clj.interfaces :as sentry-interfaces]
     [raven-clj.ring :as sentry-mw]
@@ -10,11 +12,14 @@
     [liberator.dev :refer (wrap-trace)]
     [ring.middleware.params :refer (wrap-params)]
     [ring.middleware.reload :refer (wrap-reload)]
+    [ring.middleware.cookies :refer (wrap-cookies)]
     [compojure.core :as compojure :refer (GET)]
     [com.stuartsierra.component :as component]
     [oc.lib.sentry-appender :as sa]
+    [oc.lib.jwt :as jwt]
     [oc.lib.api.common :as api-common]
     [oc.digest.components :as components]
+    [oc.digest.data :as data]
     [oc.digest.config :as c]))
 
 ;; ----- Unhandled Exceptions -----
@@ -30,13 +35,41 @@
                                  (assoc-in [:extra :exception-data] (ex-data ex))
                                  (sentry-interfaces/stacktrace ex)))))))
 
+;; ----- Test Digest Sending -----
+
+(defonce cookie-name (str c/cookie-prefix "jwt"))
+
+(defn d-or-w [frequency]
+  (or (= frequency "weekly") (= frequency "daily")))
+
+(defun- test-digest
+  
+  ([cookies :guard map? medium frequency]
+    (if-let* [jwtoken (-> cookies (get cookie-name) :value)
+              _check (jwt/check-token jwtoken c/passphrase)]
+      (test-digest jwtoken medium frequency)
+      {:body "A login with a valid JWT cookie required for test digest request." :status 401}))
+
+  ([jwtoken :guard string? "email" frequency :guard d-or-w]
+  (if-let [digest-request (data/digest-request-for jwtoken frequency)]
+    {:body "Email digest test initiated." :status 200}
+    {:body "Failed to initiate an email digest test." :status 500}))
+
+  ([jwtoken :guard string? _medium frequency :guard d-or-w]
+  {:body "Only 'email' digest testing is supported at this time." :status 501})
+
+  ([_jwtoken :guard string? _medium _frequency]
+  {:body "Only 'daily' or 'weekly' digest testing is supported at this time." :status 501}))
+
 ;; ----- Request Routing -----
 
 (defn routes [sys]
   (compojure/routes
     (GET "/ping" [] {:body "OpenCompany Digest Service: OK" :status 200}) ; Up-time monitor
     (GET "/---error-test---" [] (/ 1 0))
-    (GET "/---500-test---" [] {:body "Testing bad things." :status 500})))
+    (GET "/---500-test---" [] {:body "Testing bad things." :status 500})
+    (GET "/_/:medium/:frequency" [medium frequency :as request]
+      (test-digest (:cookies request) medium frequency))))
 
 ;; ----- System Startup -----
 
@@ -57,6 +90,7 @@
     c/dsn             (sentry-mw/wrap-sentry c/dsn) ; important that this is second
     c/prod?           wrap-with-logger
     true              wrap-params
+    true              wrap-cookies
     c/hot-reload      wrap-reload))
 
 (defn start

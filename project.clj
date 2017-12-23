@@ -28,6 +28,8 @@
     [ring-logger-timbre "0.7.6" :exclusions [com.taoensso/encore com.taoensso/timbre]] 
     ;; Web routing https://github.com/weavejester/compojure
     [compojure "1.6.0"]
+    ;; HTTP client https://github.com/dakrone/clj-http
+    [clj-http "3.7.0"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
     [open-company/lib "0.14.8"]
@@ -80,6 +82,7 @@
     :dev [:qa {
       :env ^:replace {
         :db-name "open_company_auth_dev"
+        :hot-reload "true"
         :open-company-auth-passphrase "this_is_a_dev_secret" ; JWT secret
         :aws-access-key-id "CHANGE-ME"
         :aws-secret-access-key "CHANGE-ME"
