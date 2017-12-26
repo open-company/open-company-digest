@@ -49,7 +49,7 @@
   ]
 
   :plugins [
-    [lein-ring "0.12.1"]
+    [lein-ring "0.12.2"]
     [lein-environ "1.1.0"] ; Get environment settings from different sources https://github.com/weavejester/environ
   ]
 
@@ -66,15 +66,15 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.0-alpha10" :exclusions [joda-time clj-time commons-codec]] 
+        [midje "1.9.1" :exclusions [joda-time clj-time commons-codec]] 
       ]
       :plugins [
         ;; Example-based testing https://github.com/marick/lein-midje
         [lein-midje "3.2.1"]
         ;; Linter https://github.com/jonase/eastwood
-        [jonase/eastwood "0.2.4"]
+        [jonase/eastwood "0.2.6-beta2"]
         ;; Static code search for non-idiomatic code https://github.com/jonase/kibit
-        [lein-kibit "0.1.6-beta2" :exclusions [org.clojure/clojure]]
+        [lein-kibit "0.1.6" :exclusions [org.clojure/clojure]]
       ]
     }
 
@@ -91,13 +91,13 @@
       :plugins [
         ;; Check for code smells https://github.com/dakrone/lein-bikeshed
         ;; NB: org.clojure/tools.cli is pulled in by lein-kibit
-        [lein-bikeshed "0.4.1" :exclusions [org.clojure/tools.cli]] 
+        [lein-bikeshed "0.5.0" :exclusions [org.clojure/tools.cli]] 
         ;; Runs bikeshed, kibit and eastwood https://github.com/itang/lein-checkall
         [lein-checkall "0.1.1"]
         ;; pretty-print the lein project map https://github.com/technomancy/leiningen/tree/master/lein-pprint
-        [lein-pprint "1.1.2"]
+        [lein-pprint "1.2.0"]
         ;; Check for outdated dependencies https://github.com/xsc/lein-ancient
-        [lein-ancient "0.6.12"]
+        [lein-ancient "0.6.15"]
         ;; Catch spelling mistakes in docs and docstrings https://github.com/cldwalker/lein-spell
         [lein-spell "0.1.0"]
         ;; Dead code finder https://github.com/venantius/yagni

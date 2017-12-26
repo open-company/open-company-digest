@@ -3,11 +3,14 @@
   (:require
     [clojure.walk :refer (keywordize-keys)]
     [if-let.core :refer (if-let*)]
+    [clj-time.core :as t]
+    [clj-time.format :as f]
     [clj-http.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
-    [oc.lib.jwt :as jwt]
     [oc.digest.config :as c]))
+
+(def iso-format (f/formatters :date-time)) ; ISO 8601
 
 (defonce storage-url (str c/storage-server-url "/"))
 
@@ -29,13 +32,18 @@
   ;; Need to get an org's activity from its activity link
   ([activity-url activity-accept jwtoken frequency]
   (timbre/debug "Retrieving:" activity-url "with:" jwtoken)
-  (let [response (httpc/get (str storage-url activity-url) {:headers {
+  (let [start (f/unparse iso-format
+                (if (= (keyword frequency) :daily)
+                  (t/minus (t/now) (t/days 1))
+                  (t/minus (t/now) (t/weeks 1))))
+        response (httpc/get (str storage-url activity-url) {:query-params {:start start :direction "after"}
+                                                            :headers {
                                                               :authorization (str "Bearer " jwtoken)
-                                                              :accept activity-accept}})] 
+                                                              :accept activity-accept}})]
     (if (success? response)
       (let [activity (-> response :body json/parse-string keywordize-keys :collection :items)]
         (println activity))
-      (timbre/warn "Error requesting:" activity-url "with:" jwtoken
+      (timbre/warn "Error requesting:" activity-url "with:" jwtoken "start:" start
                    "status:" (:status response) "body:" (:body response)))))
 
   ;; Need to get an org from its item link

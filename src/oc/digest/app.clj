@@ -9,7 +9,6 @@
     [raven-clj.ring :as sentry-mw]
     [taoensso.timbre :as timbre]
     [ring.logger.timbre :refer (wrap-with-logger)]
-    [liberator.dev :refer (wrap-trace)]
     [ring.middleware.params :refer (wrap-params)]
     [ring.middleware.reload :refer (wrap-reload)]
     [ring.middleware.cookies :refer (wrap-cookies)]
