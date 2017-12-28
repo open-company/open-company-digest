@@ -50,7 +50,7 @@
       {:body "A login with a valid JWT cookie required for test digest request." :status 401}))
 
   ([jwtoken :guard string? "email" frequency :guard d-or-w]
-  (if-let [digest-request (data/digest-request-for jwtoken frequency)]
+  (if-let [digest-request (data/digest-request-for jwtoken frequency :email)]
     {:body "Email digest test initiated." :status 200}
     {:body "Failed to initiate an email digest test." :status 500}))
 
