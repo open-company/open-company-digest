@@ -45,7 +45,9 @@
     (if (success? response)
       ;; Trigger the digest request for the appropriate medium
       (let [activity (-> response :body json/parse-string keywordize-keys :collection :items)]
-        (digest-request/send-trigger! (digest-request/->trigger org activity frequency) jwtoken medium))
+        (if (empty? activity)
+          (timbre/debug "Skipping digest request (no activity) for: " jwtoken)
+          (digest-request/send-trigger! (digest-request/->trigger org activity frequency) jwtoken medium)))
       ;; Failed to get activity for the digest
       (timbre/warn "Error requesting:" activity-url "with:" jwtoken "start:" start
                    "status:" (:status response) "body:" (:body response)))))

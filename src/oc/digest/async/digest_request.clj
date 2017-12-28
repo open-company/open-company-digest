@@ -47,7 +47,7 @@
 
 (defn- board [org-slug posts]
   {:name (:board-name (first posts))
-   :posts (map #(post org-slug %) posts)})
+   :posts (map #(post org-slug %) (reverse (sort-by :published-at posts)))})
 
 (defn- boards [org-slug activity]
   (let [by-board (group-by :board-name activity)
