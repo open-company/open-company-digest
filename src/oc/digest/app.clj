@@ -55,7 +55,9 @@
     {:body "Failed to initiate an email digest test." :status 500}))
 
   ([jwtoken :guard string? _medium frequency :guard d-or-w]
-  {:body "Only 'email' digest testing is supported at this time." :status 501})
+  (if-let [digest-request (data/digest-request-for jwtoken frequency :slack)]
+    {:body "Slack digest test initiated." :status 200}
+    {:body "Failed to initiate a Slack digest test." :status 500}))
 
   ([_jwtoken :guard string? _medium _frequency]
   {:body "Only 'daily' or 'weekly' digest testing is supported at this time." :status 501}))

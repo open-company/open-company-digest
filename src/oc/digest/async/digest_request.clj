@@ -22,10 +22,12 @@
    :posts [DigestPost]})
 
 (def DigestTrigger
-  {:type (schema/enum "digest")
+  {:type (schema/enum :digest)
    :digest-frequency (schema/enum :daily :weekly)
    :org-slug lib-schema/NonBlankStr
    :org-name lib-schema/NonBlankStr
+   :org-uuid lib-schema/UniqueID
+   :team-id lib-schema/UniqueID
    (schema/optional-key :logo-url) (schema/maybe schema/Str)
    (schema/optional-key :logo-width) schema/Int
    (schema/optional-key :logo-height) schema/Int
@@ -33,6 +35,17 @@
 
 (def EmailTrigger (merge DigestTrigger {
   :email lib-schema/EmailAddress}))
+
+(def SlackTrigger (merge DigestTrigger {
+  :bot {
+     :token lib-schema/NonBlankStr
+     :id lib-schema/NonBlankStr
+  }
+  :receiver {
+    :type (schema/enum :user)
+    :slack-org-id lib-schema/NonBlankStr
+    :id schema/Str
+  }}))
 
 ;; ----- Activity → Digest -----
 
@@ -60,24 +73,37 @@
   
   ;; Slack
   ([trigger jwtoken :slack]
-  trigger)
+  (let [team-id (:team-id trigger)
+        claims (:claims (jwt/decode jwtoken))
+        bots (:slack-bots claims)
+        users (:slack-users claims)
+        bot (first (bots team-id))
+        slack-org-id (:slack-org-id bot)
+        slack-user (users (keyword slack-org-id))
+        slack-trigger (-> trigger
+                        (assoc :receiver {:type :user
+                                          :slack-org-id (:slack-org-id slack-user)
+                                          :id (:id slack-user)})
+                        (assoc :bot (dissoc bot :slack-org-id)))]
+    (schema/validate SlackTrigger slack-trigger)
+    slack-trigger))
 
   ;; Email
   ([trigger jwtoken :email]
-    (let [claims (:claims (jwt/decode jwtoken))
-          email (:email claims)
-          email-trigger (assoc trigger :email email)]
+  (let [claims (:claims (jwt/decode jwtoken))
+        email (:email claims)
+        email-trigger (assoc trigger :email email)]
     (schema/validate EmailTrigger email-trigger)
     email-trigger)))
 
-(defn ->trigger [org activity frequency]
-  (let [logo-url (:logo-url org)
-        org-slug (:slug org)
-        org-name (:name org)
-        trigger {:type "digest"
+(defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id :as org}
+                 activity frequency]
+  (let [trigger {:type :digest
                  :digest-frequency (keyword frequency)
                  :org-slug org-slug
-                 :org-name org-name}
+                 :org-name org-name
+                 :org-uuid org-uuid
+                 :team-id team-id}
         with-logo (if logo-url
                     (merge trigger {:logo-url logo-url
                                     :logo-width (:logo-width org)
