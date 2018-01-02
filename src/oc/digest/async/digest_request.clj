@@ -36,12 +36,12 @@
 
 ;; ----- Activity → Digest -----
 
-(defn- post-url [org-slug board-slug uuid]
-  (s/join "/" [config/ui-server-url org-slug board-slug "post" uuid]))
+(defn- post-url [org-slug board-slug uuid published-at]
+  (str (s/join "/" [config/ui-server-url org-slug board-slug "post" uuid]) "?at=" published-at))
 
 (defn- post [org-slug post]
   {:headline (:headline post)
-   :url (post-url org-slug (:board-slug post) (:uuid post))
+   :url (post-url org-slug (:board-slug post) (:uuid post) (:published-at post))
    :publisher (:publisher post)
    :published-at (:published-at post)})
 
