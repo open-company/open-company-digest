@@ -32,7 +32,7 @@
     [clj-http "3.7.0"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.14.8"]
+    [open-company/lib "0.14.13"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
     ;; if-let - More than one binding for if/when macros https://github.com/LockedOn/if-let
@@ -49,7 +49,7 @@
   ]
 
   :plugins [
-    [lein-ring "0.12.2"]
+    [lein-ring "0.12.3"]
     [lein-environ "1.1.0"] ; Get environment settings from different sources https://github.com/weavejester/environ
   ]
 
@@ -66,7 +66,7 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.2-alpha1" :exclusions [joda-time clj-time commons-codec]] 
+        [midje "1.9.2-alpha2" :exclusions [joda-time clj-time commons-codec]] 
       ]
       :plugins [
         ;; Example-based testing https://github.com/marick/lein-midje
@@ -132,7 +132,8 @@
                  '[oc.lib.db.common :as db-common]
                  '[oc.lib.schema :as lib-schema]
                  '[oc.lib.jwt :as jwt]
-                 '[oc.digest.config :as config])
+                 '[oc.digest.config :as config]
+                 '[oc.digest.resources.user :as user-res])
       ]
     }]
   }
@@ -146,6 +147,10 @@
 
   :aliases{
     "build" ["do" "clean," "deps," "compile"] ; clean and build code
+    "dry-run-daily" ["run" "-m" "oc.digest.schedule" "-f" "daily" "-dry" "true"] ; process a day's digest (not actually sent)
+    "dry-run-weekly" ["run" "-m" "oc.digest.schedule" "-f" "weekly"] ; process a weekly digest run (not actually sent)
+    "run-daily" ["run" "-m" "oc.digest.schedule" "-f" "daily"] ; process a day's digest (actually sent)
+    "run-weekly" ["run" "-m" "oc.digest.schedule" "-f" "weekly"] ; process a weekly digest run (actually sent)
     "start" ["do" "run" "-m" "oc.digest.app"] ; start a development server
     "start!" ["with-profile" "prod" "do" "start"] ; start a server in production
     "midje!" ["with-profile" "qa" "midje"] ; run all tests
