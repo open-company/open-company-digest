@@ -14,6 +14,7 @@
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
     [org.clojure/clojure "1.9.0"]
+    [org.clojure/tools.cli "0.3.5"] ; commandline parsing https://github.com/clojure/tools.cli
     [http-kit "2.3.0-alpha4"] ; Web client/server http://http-kit.org/
     ;; Web application library https://github.com/ring-clojure/ring
     [ring/ring-devel "1.6.3"]
@@ -32,7 +33,7 @@
     [clj-http "3.7.0"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.14.13"]
+    [open-company/lib "0.14.14"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
     ;; if-let - More than one binding for if/when macros https://github.com/LockedOn/if-let
@@ -147,8 +148,8 @@
 
   :aliases{
     "build" ["do" "clean," "deps," "compile"] ; clean and build code
-    "dry-run-daily" ["run" "-m" "oc.digest.schedule" "-f" "daily" "-dry" "true"] ; process a day's digest (not actually sent)
-    "dry-run-weekly" ["run" "-m" "oc.digest.schedule" "-f" "weekly"] ; process a weekly digest run (not actually sent)
+    "dry-run-daily" ["run" "-m" "oc.digest.schedule" "-f" "daily" "--dry"] ; process a day's digest (not actually sent)
+    "dry-run-weekly" ["run" "-m" "oc.digest.schedule" "-f" "weekly" "--dry"] ; process a weekly digest run (not actually sent)
     "run-daily" ["run" "-m" "oc.digest.schedule" "-f" "daily"] ; process a day's digest (actually sent)
     "run-weekly" ["run" "-m" "oc.digest.schedule" "-f" "weekly"] ; process a weekly digest run (actually sent)
     "start" ["do" "run" "-m" "oc.digest.app"] ; start a development server

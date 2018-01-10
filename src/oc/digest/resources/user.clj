@@ -1,12 +1,14 @@
 (ns oc.digest.resources.user
-  "User stored in RethinkDB."
+  "Enumerate users stored in RethinkDB and generate JWTokens."
   (:require [defun.core :refer (defun defun-)]
+            [clj-time.core :as t]
+            [clj-time.format :as format]
             [oc.lib.db.common :as db-common]
             [oc.lib.jwt :as jwt]
             [oc.digest.config :as config]))
 
 (def user-props [:user-id :teams :email :first-name :last-name :avatar-url
-                 :digest-medium :digest-frequency :status])
+                 :digest-medium :digest-frequency :status :slack-users])
 
 (def not-for-jwt [:digest-medium :digest-frequency :status])
 
@@ -21,13 +23,18 @@
 ;; ----- Prep raw user for digest request -----
 
 (defn- with-jwtoken [conn user-props]
-  (assoc user-props :jwtoken (-> user-props
-                                ((partial apply dissoc) not-for-jwt)
-                                (merge for-jwt)
-                                (assoc :name (jwt/name-for user-props))
-                                (assoc :admin (jwt/admin-of conn (:user-id user-props)))
-                                (assoc :slack-bots (jwt/bots-for conn user-props))
-                                (jwt/generate config/passphrase))))
+  (let [token (-> user-props
+                ((partial apply dissoc) not-for-jwt)
+                (merge for-jwt)
+                (assoc :expire (format/unparse (format/formatters :date-time) (t/plus (t/now) (t/hours 1))))
+                (assoc :name (jwt/name-for user-props))
+                (assoc :admin (jwt/admin-of conn (:user-id user-props)))
+                (assoc :slack-bots (jwt/bots-for conn user-props))
+                (jwt/generate config/passphrase))
+        jwtoken (if (jwt/valid? token config/passphrase) ; sanity check
+                  token
+                  "INVALID JWTOKEN")] ; insane
+    (assoc user-props :jwtoken jwtoken)))
 
 (defun- allowed?
 

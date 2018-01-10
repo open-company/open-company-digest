@@ -106,15 +106,18 @@
     (timbre/merge-config! {:level (keyword c/log-level)}))
 
   ;; Start the system
-  (-> {:handler-fn app :port port}
-      components/digest-system
-      component/start)
+  (let [sys (-> {:handler-fn app :port port}
+              components/digest-system
+              component/start)]
 
-  ;; Echo config information
-  (println (str "\n"
-    (when c/intro? (str (slurp (clojure.java.io/resource "ascii_art.txt")) "\n"))
-    "OpenCompany Digest Service\n"))
-  (echo-config port))
+    ;; Echo config information
+    (println (str "\n"
+      (when (and c/intro? (pos? port))
+        (str (slurp (clojure.java.io/resource "ascii_art.txt")) "\n"))
+      "OpenCompany Digest Service\n"))
+    (when (pos? port)
+      (echo-config port))
+    sys))
 
 (defn -main []
   (start c/digest-server-port))

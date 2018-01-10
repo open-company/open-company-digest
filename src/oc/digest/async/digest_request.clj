@@ -77,25 +77,21 @@
         claims (:claims (jwt/decode jwtoken))
         bots (:slack-bots claims)
         users (:slack-users claims)
-        bot (first (bots team-id))
+        bot (first (get bots team-id))
         slack-org-id (:slack-org-id bot)
-        slack-user (users (keyword slack-org-id))
-        slack-trigger (-> trigger
-                        (assoc :receiver {:type :user
-                                          :slack-org-id (:slack-org-id slack-user)
-                                          :id (:id slack-user)})
-                        (assoc :bot (dissoc bot :slack-org-id)))]
-    (schema/validate SlackTrigger slack-trigger)
-    slack-trigger))
+        slack-user (get users (keyword slack-org-id))]
+    (-> trigger
+      (assoc :receiver {:type :user
+                        :slack-org-id (:slack-org-id slack-user)
+                        :id (:id slack-user)})
+      (assoc :bot (dissoc bot :slack-org-id)))))
 
   ;; Email
   ([trigger jwtoken :email]
   (let [claims (:claims (jwt/decode jwtoken))
-        email (:email claims)
-        email-trigger (assoc trigger :email email)]
-    (schema/validate EmailTrigger email-trigger)
-    email-trigger)))
-
+        email (:email claims)]
+    (assoc trigger :email email))))
+    
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id :as org}
                  activity frequency]
   (let [trigger {:type :digest
@@ -112,15 +108,22 @@
     (assoc with-logo :boards (boards org-slug activity))))
 
 (defn send-trigger! [trigger jwtoken medium]
-  (schema/validate DigestTrigger trigger)
-  (let [queue (if (= (keyword medium) :slack) config/aws-sqs-bot-queue config/aws-sqs-email-queue)
-        medium-trigger (trigger-for trigger jwtoken medium)]
-    (timbre/info "Digest request to queue:" queue)
-    (timbre/trace "Digest request:" trigger)
-    (timbre/info "Sending request to queue:" queue)
-    (sqs/send-message
-      {:access-key config/aws-access-key-id
-       :secret-key config/aws-secret-access-key}
-      queue
-      medium-trigger)
-    (timbre/info "Request sent to:" queue)))
+  (schema/validate DigestTrigger trigger) ; sanity check
+  (let [slack? (= (keyword medium) :slack)
+        queue (if slack? config/aws-sqs-bot-queue config/aws-sqs-email-queue)
+        medium-trigger (trigger-for trigger jwtoken medium)
+        trigger-schema (if slack? SlackTrigger EmailTrigger)]
+    (if (lib-schema/valid? trigger-schema medium-trigger)
+      ;; All is well, do the needful
+      (do
+        (timbre/info "Digest request to queue:" queue)
+        (timbre/trace "Digest request:" trigger)
+        (timbre/info "Sending request to queue:" queue)
+        (sqs/send-message
+          {:access-key config/aws-access-key-id
+           :secret-key config/aws-secret-access-key}
+          queue
+          medium-trigger)
+        (timbre/info "Request sent to:" queue))
+      ;; Trigger is no good
+      (timbre/warn "Digest request failed with invalid trigger:" trigger))))
