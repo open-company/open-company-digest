@@ -84,6 +84,12 @@
     "Sentry: " c/dsn "\n\n"
     (when c/intro? "Ready to serve...\n"))))
 
+(defn echo-cli-config []
+  (println (str
+    "Database: " c/db-name "\n"
+    "Database pool: " c/db-pool-size "\n"
+    "AWS SQS email queue: " c/aws-sqs-email-queue "\n")))
+
 ;; Ring app definition
 (defn app [sys]
   (cond-> (routes sys)
@@ -115,8 +121,9 @@
       (when (and c/intro? (pos? port))
         (str (slurp (clojure.java.io/resource "ascii_art.txt")) "\n"))
       "OpenCompany Digest Service\n"))
-    (when (pos? port)
-      (echo-config port))
+    (if (pos? port)
+      (echo-config port)
+      (echo-cli-config))
     sys))
 
 (defn -main []
