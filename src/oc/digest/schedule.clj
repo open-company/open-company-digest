@@ -1,6 +1,7 @@
 (ns oc.digest.schedule
-  ""
+  "CLI and scheduled digest runs."
   (:require [clojure.tools.cli :as cli]
+            [taoensso.timbre :as timbre]
             [oc.lib.db.pool :as pool]
             [oc.digest.app :as app]
             [oc.digest.resources.user :as user-res]
@@ -14,7 +15,11 @@
 
 (defn- digest-for [user frequency skip-send?]
   (let [medium (or (keyword (:digest-medium user)) :email)]
-    (data/digest-request-for (:jwtoken user) frequency medium skip-send?)))
+    (try
+      (data/digest-request-for (:jwtoken user) frequency medium skip-send?)
+      (catch Exception e
+        (timbre/warn frequency "digest failed for user:" user)
+        (timbre/error e)))))
 
 (defn digest-run 
 

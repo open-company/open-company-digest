@@ -1,5 +1,5 @@
 (ns oc.digest.app
-  "Namespace for the web application which serves the REST API."
+  "Namespace for the web application which serves the REST API and starts up scheduler."
   (:gen-class)
   (:require
     [defun.core :refer (defun-)]
