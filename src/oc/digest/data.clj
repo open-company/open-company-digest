@@ -22,9 +22,6 @@
   (let [status (:status response)]
     (and (>= status 200) (< status 300))))
 
-(defn- link-for [rel {links :links :as org}]
-  (some #(if (= (:rel %) rel) % false) links))
-
 (defn- log-token [jwtoken]
   (let [claims (:claims (jwt/decode jwtoken))]
     (str "user-id " (:user-id claims) " email " (:email claims))))
@@ -68,7 +65,7 @@
 
   ;; Need to get an org from its item link
   ([org jwtoken frequency medium skip-send?]
-  (if-let* [org-link (link-for "item" org)
+  (if-let* [org-link (digest-request/link-for "item" org)
             org-url (str storage-url (:href org-link))]
     (do
       (timbre/debug "Retrieving:" org-url "for:" (log-token jwtoken))
@@ -77,7 +74,7 @@
                                             :accept (:accept org-link)}})] 
         (if (success? response)
           (let [org (-> response :body json/parse-string keywordize-keys)
-                activity-link (link-for "activity" org)]
+                activity-link (digest-request/link-for "activity" org)]
             (digest-request-for org (:href activity-link) (:accept activity-link) jwtoken frequency medium skip-send?))
           (timbre/warn "Error requesting:" org-link "for:" (log-token jwtoken)
                        "status:" (:status response) "body:" (:body response)))))

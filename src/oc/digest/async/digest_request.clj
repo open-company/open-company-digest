@@ -15,7 +15,9 @@
   {:headline (schema/maybe schema/Str)
    :url lib-schema/NonBlankStr
    :publisher lib-schema/Author
-   :published-at lib-schema/ISO8601})
+   :published-at lib-schema/ISO8601
+   :comment-count schema/Int
+   :comment-authors [lib-schema/Author]})
 
 (def DigestBoard
   {:name lib-schema/NonBlankStr
@@ -47,16 +49,24 @@
     :id schema/Str
   }}))
 
+;; ----- Utility Functions -----
+
+(defn link-for [rel {links :links}]
+  (some #(if (= (:rel %) rel) % false) links))
+
 ;; ----- Activity → Digest -----
 
 (defn- post-url [org-slug board-slug uuid published-at]
   (str (s/join "/" [config/ui-server-url org-slug board-slug "post" uuid]) "?at=" published-at))
 
 (defn- post [org-slug post]
-  {:headline (:headline post)
-   :url (post-url org-slug (:board-slug post) (:uuid post) (:published-at post))
-   :publisher (:publisher post)
-   :published-at (:published-at post)})
+  (let [comments (link-for "comments" post)]
+    {:headline (:headline post)
+     :url (post-url org-slug (:board-slug post) (:uuid post) (:published-at post))
+     :publisher (:publisher post)
+     :published-at (:published-at post)
+     :comment-count (or (:count comments) 0)
+     :comment-authors (or (map #(dissoc % :created-at) (:authors comments)) [])}))
 
 (defn- board [org-slug posts]
   {:name (:board-name (first posts))
