@@ -29,7 +29,7 @@ To get started, head to: [Carrot](https://carrot.io/)
 
 ## Overview
 
-TBD.
+Daily and Weekly Slack and Email digests.
 
 ## Local Setup
 
