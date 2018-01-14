@@ -2,12 +2,13 @@
 
 [![MPL License](http://img.shields.io/badge/license-MPL-blue.svg?style=flat)](https://www.mozilla.org/MPL/2.0/)
 [![Build Status](https://travis-ci.org/open-company/open-company-digest.svg)](https://travis-ci.org/open-company/open-company-digest)
+[![Dependencies Status](https://versions.deps.co/open-company/open-company-digest/status.svg)](https://versions.deps.co/open-company/open-company-digest)
 
 ## Background
 
-> I've come to learn there is a virtuous cycle to transparency and a very vicious cycle of obfuscation.
+> The single most important ingredient in the recipe for success is transparency because transparency builds trust.
 
-> -- [Jeff Weiner](https://www.linkedin.com/in/jeffweiner08)
+> -- [Denise Morrison](https://en.wikipedia.org/wiki/Denise_Morrison)
 
 Companies struggle to keep everyone on the same page. People are hyper-connected in the moment but still don’t know what’s happening across the company. Employees and investors, co-founders and execs, customers and community, they all want more transparency. The solution is surprisingly simple and effective - great company updates that build transparency and alignment.
 
@@ -28,7 +29,7 @@ To get started, head to: [Carrot](https://carrot.io/)
 
 ## Overview
 
-TBD.
+Daily and Weekly Slack and Email digests.
 
 ## Local Setup
 
@@ -188,7 +189,7 @@ You can also override these settings with environmental variables in the form of
 
 ## Usage
 
-Prospective users of [Carrot](https://carrot.io/) should get started by going to [Carrot.io](https://carrot.io/). The following usage is **for developers** wanting to work on the OpenCompany Authentication Service.
+Prospective users of [Carrot](https://carrot.io/) should get started by going to [Carrot.io](https://carrot.io/). The following usage is **for developers** wanting to work on the OpenCompany Digest Service.
 
 **Make sure you've updated `project.clj` as described above.**
 
@@ -244,4 +245,4 @@ Please note that this project is released with a [Contributor Code of Conduct](h
 
 Distributed under the [Mozilla Public License v2.0](http://www.mozilla.org/MPL/2.0/).
 
-Copyright © 2015-2017 OpenCompany, LLC
+Copyright © 2017-2018 OpenCompany, LLC

@@ -14,6 +14,7 @@
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
     [org.clojure/clojure "1.9.0"]
+    [org.clojure/tools.cli "0.3.5"] ; commandline parsing https://github.com/clojure/tools.cli
     [http-kit "2.3.0-alpha4"] ; Web client/server http://http-kit.org/
     ;; Web application library https://github.com/ring-clojure/ring
     [ring/ring-devel "1.6.3"]
@@ -28,9 +29,11 @@
     [ring-logger-timbre "0.7.6" :exclusions [com.taoensso/encore com.taoensso/timbre]] 
     ;; Web routing https://github.com/weavejester/compojure
     [compojure "1.6.0"]
+    ;; HTTP client https://github.com/dakrone/clj-http
+    [clj-http "3.7.0"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.14.8"]
+    [open-company/lib "0.14.14"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
     ;; if-let - More than one binding for if/when macros https://github.com/LockedOn/if-let
@@ -47,7 +50,7 @@
   ]
 
   :plugins [
-    [lein-ring "0.12.1"]
+    [lein-ring "0.12.3"]
     [lein-environ "1.1.0"] ; Get environment settings from different sources https://github.com/weavejester/environ
   ]
 
@@ -64,15 +67,15 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.0-alpha10" :exclusions [joda-time clj-time commons-codec]] 
+        [midje "1.9.2-alpha2" :exclusions [joda-time clj-time commons-codec]] 
       ]
       :plugins [
         ;; Example-based testing https://github.com/marick/lein-midje
         [lein-midje "3.2.1"]
         ;; Linter https://github.com/jonase/eastwood
-        [jonase/eastwood "0.2.4"]
+        [jonase/eastwood "0.2.6-beta2"]
         ;; Static code search for non-idiomatic code https://github.com/jonase/kibit
-        [lein-kibit "0.1.6-beta2" :exclusions [org.clojure/clojure]]
+        [lein-kibit "0.1.6" :exclusions [org.clojure/clojure]]
       ]
     }
 
@@ -80,6 +83,7 @@
     :dev [:qa {
       :env ^:replace {
         :db-name "open_company_auth_dev"
+        :hot-reload "true"
         :open-company-auth-passphrase "this_is_a_dev_secret" ; JWT secret
         :aws-access-key-id "CHANGE-ME"
         :aws-secret-access-key "CHANGE-ME"
@@ -88,13 +92,13 @@
       :plugins [
         ;; Check for code smells https://github.com/dakrone/lein-bikeshed
         ;; NB: org.clojure/tools.cli is pulled in by lein-kibit
-        [lein-bikeshed "0.4.1" :exclusions [org.clojure/tools.cli]] 
+        [lein-bikeshed "0.5.0" :exclusions [org.clojure/tools.cli]] 
         ;; Runs bikeshed, kibit and eastwood https://github.com/itang/lein-checkall
         [lein-checkall "0.1.1"]
         ;; pretty-print the lein project map https://github.com/technomancy/leiningen/tree/master/lein-pprint
-        [lein-pprint "1.1.2"]
+        [lein-pprint "1.2.0"]
         ;; Check for outdated dependencies https://github.com/xsc/lein-ancient
-        [lein-ancient "0.6.12"]
+        [lein-ancient "0.6.15"]
         ;; Catch spelling mistakes in docs and docstrings https://github.com/cldwalker/lein-spell
         [lein-spell "0.1.0"]
         ;; Dead code finder https://github.com/venantius/yagni
@@ -129,7 +133,8 @@
                  '[oc.lib.db.common :as db-common]
                  '[oc.lib.schema :as lib-schema]
                  '[oc.lib.jwt :as jwt]
-                 '[oc.digest.config :as config])
+                 '[oc.digest.config :as config]
+                 '[oc.digest.resources.user :as user-res])
       ]
     }]
   }
@@ -143,6 +148,10 @@
 
   :aliases{
     "build" ["do" "clean," "deps," "compile"] ; clean and build code
+    "dry-run-daily" ["run" "-m" "oc.digest.schedule" "-f" "daily" "--dry"] ; process a day's digest (not actually sent)
+    "dry-run-weekly" ["run" "-m" "oc.digest.schedule" "-f" "weekly" "--dry"] ; process a weekly digest run (not actually sent)
+    "run-daily" ["run" "-m" "oc.digest.schedule" "-f" "daily"] ; process a day's digest (actually sent)
+    "run-weekly" ["run" "-m" "oc.digest.schedule" "-f" "weekly"] ; process a weekly digest run (actually sent)
     "start" ["do" "run" "-m" "oc.digest.app"] ; start a development server
     "start!" ["with-profile" "prod" "do" "start"] ; start a server in production
     "midje!" ["with-profile" "qa" "midje"] ; run all tests
@@ -171,5 +180,5 @@
 
   :resource-paths ["resources" ]
 
-  :main oc.auth.app
+  :main oc.digest.app
 )

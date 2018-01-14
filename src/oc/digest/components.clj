@@ -44,9 +44,13 @@
 (defn digest-system [{:keys [port handler-fn]}]
   (component/system-map
    :db-pool (map->RethinkPool {:size c/db-pool-size :regenerate-interval 5})
-   :handler (component/using
-             (map->Handler {:handler-fn handler-fn})
-             [:db-pool])
-   :server  (component/using
-             (map->HttpKit {:options {:port port}})
-             [:handler])))
+   :handler (if (pos? port)
+              (component/using
+                (map->Handler {:handler-fn handler-fn})
+                [:db-pool])
+              "N/A")
+   :server  (if (pos? port)
+              (component/using
+                (map->HttpKit {:options {:port port}})
+                [:handler])
+              "N/A")))

@@ -49,7 +49,9 @@
 (defonce aws-secret-access-key (env :aws-secret-access-key))
 
 (defonce aws-sqs-email-queue (env :aws-sqs-email-queue))
+(defonce aws-sqs-bot-queue (env :aws-sqs-bot-queue))
 
 ;; ----- JWT -----
 
+(defonce cookie-prefix (or (env :cookie-prefix) "localhost-"))
 (defonce passphrase (env :open-company-auth-passphrase))
