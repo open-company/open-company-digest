@@ -38,7 +38,7 @@ Prospective users of [Carrot](https://carrot.io/) should get started by going to
 Most of the dependencies are internal, meaning [Leiningen](https://github.com/technomancy/leiningen) will handle getting them for you. There are a few exceptions:
 
 * [Java 8](http://www.oracle.com/technetwork/java/javase/downloads/index.html) - a Java 8 JRE is needed to run Clojure
-* [Leiningen](https://github.com/technomancy/leiningen) - Clojure's build and dependency management tool
+* [Leiningen](https://github.com/technomancy/leiningen) v2.7.1+ - Clojure's build and dependency management tool
 * [RethinkDB](http://rethinkdb.com/) v2.3.5+ - a multi-modal (document, key/value, relational) open source NoSQL database
 
 #### Java
@@ -219,9 +219,42 @@ To create a production build run:
 lein build
 ```
 
+To initiate a test of a daily or weekly digest run (nothing will be sent out):
+
+```console
+lein dry-run-daily
+```
+
+-or-
+
+```console
+lein dry-run-weekly
+```
+
+To initiate a daily or weekly digest run:
+
+```console
+lein run-daily
+```
+
+-or-
+
+```console
+lein run-weekly
+```
+
+
 ## Technical Design
 
-TBD.
+The Digest Service is composed of 4 main responsibilities:
+
+- Send daily email digests to users
+- Send daily Slack digests to users
+- Send weekly email digests to users
+- Send weekly Slack digests to users
+
+The Digest Service runs on a daily and weekly schedule, or a digest run can be invoked manually. It uses read-only access to the RethinkDB database of the [Authorization Service](https://github.com/open-company/open-company-auth) to enumerate users that have requested a digest. For each of those users, a digest request is generated for each organization the user has access to (most users just have 1 organization) by generating a [JSON Web Token](https://jwt.io/) for that user, using the JWToken to request a date range of activity for the particular user and the particular org from the REST API of [Storage Service](https://github.com/open-company/open-company-storage), and then generating a JSON digest request, sent via [SQS](https://aws.amazon.com/sqs/), to either the [Email Service](https://github.com/open-company/open-company-email) or [Bot Service](https://github.com/open-company/open-company-bot).
+
 
 ## Testing
 

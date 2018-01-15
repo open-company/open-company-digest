@@ -57,6 +57,4 @@
   (for-digest conn (db-common/read-resources conn table-name :digest-frequency :daily user-props)))
 
   ([conn :weekly]
-  (for-digest conn (concat
-    (db-common/read-resources conn table-name :digest-frequency :daily user-props)
-    (db-common/read-resources conn table-name :digest-frequency :weekly user-props)))))
+  (for-digest conn (db-common/read-resources conn table-name :digest-frequency :weekly user-props))))
