@@ -1,15 +1,24 @@
 (ns oc.digest.schedule
   "CLI and scheduled digest runs."
-  (:require [clojure.tools.cli :as cli]
+  (:require [defun.core :refer (defun)]
             [taoensso.timbre :as timbre]
+            [java-time :as jt]
+            [tick.core :as tick]
+            [tick.timeline :as timeline]
+            [tick.clock :as clock]
+            [tick.schedule :as schedule]
             [oc.lib.db.pool :as pool]
-            [oc.digest.app :as app]
             [oc.digest.resources.user :as user-res]
-            [oc.digest.data :as data]
-            [oc.digest.config :as c])
+            [oc.digest.data :as data])
+  (:import [org.joda.time DateTimeZone])
   (:gen-class))
 
-(def no-http-server -1)
+;; ----- State -----
+
+(def daily-digest-schedule (atom false)) ; atom holding schedule so it can be stopped
+(def weekly-digest-schedule (atom false)) ; atom holding schedule so it can be stopped
+
+(def db-pool (atom false)) ; atom holding DB pool
 
 ;; ----- Digest Request Generation -----
 
@@ -21,34 +30,78 @@
         (timbre/warn frequency "digest failed for user:" user)
         (timbre/error e)))))
 
-(defn digest-run 
+(defun digest-run 
 
-  ([user-list frequency] (digest-run user-list frequency false))
+  ([conn :guard map? frequency]
+  (let [user-list (user-res/list-users-for-digest conn frequency)]
+    (timbre/info "Initiating" frequency "run for" (count user-list) "users...")
+    (digest-run user-list frequency)))
 
-  ([user-list frequency skip-send?]
-  (doall (pmap #(digest-for % frequency skip-send?) user-list))))
+  ([user-list :guard sequential? frequency] (digest-run user-list frequency false))
 
-;; ----- Scheduler -----
+  ([user-list :guard sequential? frequency skip-send?]
+  (doall (pmap #(digest-for % frequency skip-send?) user-list))
+  (timbre/info "Done with" frequency "run for" (count user-list) "users.")))
 
-;; ----- Commandline Interface -----
+;; ----- Scheduled Fns -----
 
-(def cli-options
-  ;; An option with a required argument
-  [["-f" "--frequency FREQUENCY" "'daily' -or- 'weekly'"
-    :default "daily"
-    :validate [#(or (= % "daily") (= % "weekly")) "Must be 'daily' or 'weekly'"]]
-   ;; A boolean option defaulting to nil
-   ["-d" "--dry"]])
+(defn- new-tick?
+  "Check if this is a new tick, or if it is just the scheduler catching up with now."
+  [tick]
+  (.isAfter (.plusSeconds (.toInstant tick) 60) (jt/instant)))
 
-(defn -main [& args]
-  (let [options (cli/parse-opts args cli-options)
-        frequency (-> options :options :frequency)
-        dry? (-> options :options :dry)
-        sys (app/start no-http-server)
-        db-pool (-> sys :db-pool :pool)
-        _output (println "Enumerating users for a" frequency "digest run...")
-        user-list (pool/with-pool [conn db-pool] (user-res/list-users-for-digest conn (keyword frequency)))]
-    (println "Initiating" frequency "digest run for" (count user-list) "users...")
-    (digest-run user-list frequency dry?)
-    (println "DONE\n")
-    (System/exit 0)))
+(defn- daily-run [{tick :tick/date}]
+  (when (new-tick? tick)
+    (timbre/info "New daily digest run initiated with tick:" tick)
+    (try
+      (pool/with-pool [conn @db-pool] (digest-run conn :daily))
+      (catch Exception e
+        (timbre/error e)))))
+
+(defn- weekly-run [{tick :tick/date}]
+  (when (new-tick? tick)
+    (timbre/info "New weekly digest run initiated with tick:" tick)
+    (try
+      (pool/with-pool [conn @db-pool] (digest-run conn :weekly))
+      (catch Exception e
+        (timbre/error e)))))
+
+;; ----- Scheduler Component -----
+
+(def daily-time "7 AM EST" (jt/adjust (jt/with-zone (jt/zoned-date-time) "America/New_York") (jt/local-time 7)))
+(def weekly-time "7 PM EST on Sunday" (jt/adjust 
+                                        (jt/adjust (jt/with-zone (jt/zoned-date-time) "America/New_York")
+                                          (jt/local-time 19))                    
+                                        :first-in-month :sunday))
+
+(def daily-timeline (timeline/timeline (timeline/periodic-seq daily-time (tick/days 1)))) ; every day at daily-time
+(def weekly-timeline (timeline/timeline (timeline/periodic-seq weekly-time (tick/weeks 1)))); every week at weekly-time
+
+(def daily-schedule (schedule/schedule daily-run daily-timeline))
+(def weekly-schedule (schedule/schedule weekly-run weekly-timeline))
+
+(defn start [pool]
+
+  (reset! db-pool pool) ; hold onto the DB pool reference)
+
+  (timbre/info "Starting daily digest schedule...")
+  (reset! daily-digest-schedule daily-schedule)
+  (schedule/start daily-schedule (clock/clock-ticking-in-seconds))
+
+  (timbre/info "Starting weekly digest schedule...")
+  (reset! weekly-digest-schedule weekly-schedule)
+  (schedule/start weekly-schedule (clock/clock-ticking-in-seconds)))
+
+(defn stop []
+
+  (when @daily-digest-schedule
+    (timbre/info "Stopping daily digest schedule...")
+    (schedule/stop @daily-digest-schedule)
+    (reset! daily-digest-schedule false))
+  
+  (when @weekly-digest-schedule
+    (timbre/info "Stopping weekly digest schedule...")
+    (schedule/stop @weekly-digest-schedule))
+    (reset! weekly-digest-schedule daily-schedule)
+
+  (reset! db-pool false))

@@ -123,8 +123,7 @@
       "OpenCompany Digest Service\n"))
     (if (pos? port)
       (echo-config port)
-      (echo-cli-config))
-    sys))
+      (echo-cli-config))))
 
 (defn -main []
   (start c/digest-server-port))

@@ -31,6 +31,10 @@
     [compojure "1.6.0"]
     ;; HTTP client https://github.com/dakrone/clj-http
     [clj-http "3.7.0"]
+    ;; Simple scheduler https://github.com/juxt/tick
+    [tick "0.3.5"]
+    ;; Clojure wrapper for Java 8 Date-Time https://github.com/dm3/clojure.java-time
+    [clojure.java-time "0.3.1"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
     [open-company/lib "0.14.15"]
@@ -148,10 +152,10 @@
 
   :aliases{
     "build" ["do" "clean," "deps," "compile"] ; clean and build code
-    "dry-run-daily" ["run" "-m" "oc.digest.schedule" "-f" "daily" "--dry"] ; process a day's digest (not actually sent)
-    "dry-run-weekly" ["run" "-m" "oc.digest.schedule" "-f" "weekly" "--dry"] ; process a weekly digest run (not actually sent)
-    "run-daily" ["run" "-m" "oc.digest.schedule" "-f" "daily"] ; process a day's digest (actually sent)
-    "run-weekly" ["run" "-m" "oc.digest.schedule" "-f" "weekly"] ; process a weekly digest run (actually sent)
+    "dry-run-daily" ["run" "-m" "oc.digest.gli" "-f" "daily" "--dry"] ; process a day's digest (not actually sent)
+    "dry-run-weekly" ["run" "-m" "oc.digest.gli" "-f" "weekly" "--dry"] ; process a weekly digest run (not actually sent)
+    "run-daily" ["run" "-m" "oc.digest.cli" "-f" "daily"] ; process a day's digest (actually sent)
+    "run-weekly" ["run" "-m" "oc.digest.cli" "-f" "weekly"] ; process a weekly digest run (actually sent)
     "start" ["do" "run" "-m" "oc.digest.app"] ; start a development server
     "start!" ["with-profile" "prod" "do" "start"] ; start a server in production
     "midje!" ["with-profile" "qa" "midje"] ; run all tests
