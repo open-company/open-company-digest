@@ -14,8 +14,6 @@
 
 (def iso-format (f/formatters :date-time)) ; ISO 8601
 
-(defonce storage-url (str c/storage-server-url "/"))
-
 ;; ----- Utility Functions -----
 
 (defn- success? [response]
@@ -37,16 +35,16 @@
   
   ;; Need to get an org's activity from its activity link
   ([org activity-url activity-accept jwtoken frequency medium skip-send?]
-  (timbre/debug "Retrieving:" activity-url "for:" (log-token jwtoken))
+  (timbre/debug "Retrieving:" (str c/storage-server-url activity-url) "for:" (log-token jwtoken))
   (let [start (f/unparse iso-format
                 (if (= (keyword frequency) :daily)
                   (t/minus (t/now) (t/days 1))
                   (t/minus (t/now) (t/weeks 1))))
         ;; Retrieve activity data for the digest
-        response (httpc/get (str storage-url activity-url) {:query-params {:start start :direction "after"}
-                                                            :headers {
-                                                              :authorization (str "Bearer " jwtoken)
-                                                              :accept activity-accept}})]
+        response (httpc/get (str c/storage-server-url activity-url) {:query-params {:start start :direction "after"}
+                                                                     :headers {
+                                                                       :authorization (str "Bearer " jwtoken)
+                                                                       :accept activity-accept}})]
     (if (success? response)
       (let [activity (-> response :body json/parse-string keywordize-keys :collection :items)]
         (cond
@@ -66,7 +64,7 @@
   ;; Need to get an org from its item link
   ([org jwtoken frequency medium skip-send?]
   (if-let* [org-link (digest-request/link-for "item" org)
-            org-url (str storage-url (:href org-link))]
+            org-url (str c/storage-server-url (:href org-link))]
     (do
       (timbre/debug "Retrieving:" org-url "for:" (log-token jwtoken))
       (let [response (httpc/get org-url {:headers {
@@ -82,8 +80,8 @@
 
   ;; Need to get list of orgs from /
   ([jwtoken frequency medium skip-send?]
-  (timbre/debug "Retrieving:" storage-url "for:" (log-token jwtoken))
-  (let [response (httpc/get storage-url {:headers {
+  (timbre/debug "Retrieving:" c/storage-server-url "for:" (log-token jwtoken))
+  (let [response (httpc/get c/storage-server-url {:headers {
                                         :authorization (str "Bearer " jwtoken)
                                         :accept "application/vnd.collection+vnd.open-company.org+json;version=1"}})] 
     (if (success? response)
@@ -91,4 +89,5 @@
         ;; TBD serial for now, think through if we want this parallel
         (doseq [org orgs] (digest-request-for org jwtoken frequency medium skip-send?))
         true)
-      (timbre/warn "Error requesting:" storage-url "for:" (log-token jwtoken) "status:" (:status response) "body:" (:body response))))))
+      (timbre/warn "Error requesting:" c/storage-server-url "for:" (log-token jwtoken)
+        "status:" (:status response) "body:" (:body response))))))

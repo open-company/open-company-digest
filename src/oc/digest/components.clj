@@ -3,6 +3,7 @@
             [taoensso.timbre :as timbre]
             [org.httpkit.server :as httpkit]
             [oc.lib.db.pool :as pool]
+            [oc.digest.schedule :as schedule]
             [oc.digest.config :as c]))
 
 (defrecord HttpKit [options handler server]
@@ -41,16 +42,33 @@
   (stop [component]
     (dissoc component :handler)))
 
+(defrecord Scheduler [db-pool]
+  component/Lifecycle
+  (start [component]
+    (timbre/info "[scheduler] starting")
+    (schedule/start (:pool db-pool))
+    (assoc component :scheduler true))
+  (stop [component]
+    (schedule/stop)
+    (dissoc component :scheduler false)))
+
 (defn digest-system [{:keys [port handler-fn]}]
   (component/system-map
-   :db-pool (map->RethinkPool {:size c/db-pool-size :regenerate-interval 5})
-   :handler (if (pos? port)
-              (component/using
-                (map->Handler {:handler-fn handler-fn})
-                [:db-pool])
-              "N/A")
-   :server  (if (pos? port)
-              (component/using
-                (map->HttpKit {:options {:port port}})
-                [:handler])
-              "N/A")))
+    :db-pool (map->RethinkPool {:size c/db-pool-size :regenerate-interval 5})
+    :scheduler (if (pos? port)
+                (component/using
+                  (map->Scheduler {})
+                  [:db-pool])
+                "N/A")
+    :handler (if (pos? port)
+                (component/using
+                  (map->Handler {:handler-fn handler-fn})
+                  [:db-pool])
+                "N/A")
+    :server  (if (pos? port)
+                (component/using
+                  (map->HttpKit {:options {:port port}})
+                  [:handler])
+                "N/A")
+
+    ))
