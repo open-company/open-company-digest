@@ -152,8 +152,8 @@
 
   :aliases{
     "build" ["do" "clean," "deps," "compile"] ; clean and build code
-    "dry-run-daily" ["run" "-m" "oc.digest.gli" "-f" "daily" "--dry"] ; process a day's digest (not actually sent)
-    "dry-run-weekly" ["run" "-m" "oc.digest.gli" "-f" "weekly" "--dry"] ; process a weekly digest run (not actually sent)
+    "dry-run-daily" ["run" "-m" "oc.digest.cli" "-f" "daily" "--dry"] ; process a day's digest (not actually sent)
+    "dry-run-weekly" ["run" "-m" "oc.digest.cli" "-f" "weekly" "--dry"] ; process a weekly digest run (not actually sent)
     "run-daily" ["run" "-m" "oc.digest.cli" "-f" "daily"] ; process a day's digest (actually sent)
     "run-weekly" ["run" "-m" "oc.digest.cli" "-f" "weekly"] ; process a weekly digest run (actually sent)
     "start" ["do" "run" "-m" "oc.digest.app"] ; start a development server
