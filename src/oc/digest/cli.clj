@@ -1,8 +1,10 @@
-(ns oc.digest.app
+(ns oc.digest.cli
   "Namespace for the commandline interface to invoke digest runs."
   (:gen-class)
   (:require
     [clojure.tools.cli :as cli]
+    [oc.lib.db.pool :as db]
+    [oc.digest.config :as c]
     [oc.digest.schedule :as schedule]))
 
 (def no-http-server -1)

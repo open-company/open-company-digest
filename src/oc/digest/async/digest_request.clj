@@ -51,6 +51,10 @@
 
 ;; ----- Utility Functions -----
 
+(defn log-token [jwtoken]
+  (let [claims (:claims (jwt/decode jwtoken))]
+    (str "user-id " (:user-id claims) " email " (:email claims))))
+
 (defn link-for [rel {links :links}]
   (some #(if (= (:rel %) rel) % false) links))
 
@@ -126,14 +130,14 @@
     (if (lib-schema/valid? trigger-schema medium-trigger)
       ;; All is well, do the needful
       (do
-        (timbre/info "Digest request to queue:" queue)
-        (timbre/trace "Digest request:" trigger)
-        (timbre/info "Sending request to queue:" queue)
+        (timbre/info "Digest request to queue:" queue "for:" (log-token jwtoken))
+        (timbre/trace "Digest request:" trigger "for:" (log-token jwtoken))
+        (timbre/info "Sending request to queue:" queue "for:" (log-token jwtoken))
         (sqs/send-message
           {:access-key config/aws-access-key-id
            :secret-key config/aws-secret-access-key}
           queue
           medium-trigger)
-        (timbre/info "Request sent to:" queue))
+        (timbre/info "Request sent to:" queue "for:" (log-token jwtoken)))
       ;; Trigger is no good
-      (timbre/warn "Digest request failed with invalid trigger:" trigger))))
+      (timbre/warn "Digest request failed with invalid trigger:" trigger "for:" (log-token jwtoken)))))

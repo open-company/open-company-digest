@@ -18,7 +18,7 @@
 (def daily-digest-schedule (atom false)) ; atom holding schedule so it can be stopped
 (def weekly-digest-schedule (atom false)) ; atom holding schedule so it can be stopped
 
-(def db-pool (atom false)) ; atom holding DB pool
+(def db-pool (atom false)) ; atom holding DB pool so it can be used in each tick of the schedule
 
 ;; ----- Digest Request Generation -----
 
@@ -32,7 +32,9 @@
 
 (defun digest-run 
 
-  ([conn :guard map? frequency]
+  ([conn :guard map? frequency] (digest-run conn frequency false))
+
+  ([conn :guard map? frequency skip-send?]
   (let [user-list (user-res/list-users-for-digest conn frequency)]
     (timbre/info "Initiating" frequency "run for" (count user-list) "users...")
     (digest-run user-list frequency)))
