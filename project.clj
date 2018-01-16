@@ -175,6 +175,8 @@
     ;; Enable some linters that are disabled by default
     :add-linters [:unused-namespaces :unused-private-vars]
 
+    :config-files ["third-party-macros.clj"]
+    
     ;; Exclude testing namespaces
     :tests-paths ["test"]
     :exclude-namespaces [:test-paths]

@@ -8,7 +8,6 @@
     [clj-http.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
-    [oc.lib.jwt :as jwt]
     [oc.digest.async.digest-request :as d-r]
     [oc.digest.config :as c]))
 
