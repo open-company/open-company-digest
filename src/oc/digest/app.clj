@@ -45,18 +45,19 @@
   
   ([cookies :guard map? medium frequency]
     (if-let* [jwtoken (-> cookies (get cookie-name) :value)
-              _check (jwt/check-token jwtoken c/passphrase)]
+              _valid? (jwt/valid? jwtoken c/passphrase)]
       (test-digest jwtoken medium frequency)
-      {:body "A login with a valid JWT cookie required for test digest request." :status 401}))
+      {:body "An unexpired login with a valid JWT cookie required for test digest request.\n
+              Please refresh your login with the Web UI before making this request." :status 401}))
 
   ([jwtoken :guard string? _medium :guard #(= % "email") frequency :guard d-or-w]
   (if-let [digest-request (data/digest-request-for jwtoken frequency :email false)]
-    {:body "Email digest test initiated." :status 200}
+    {:body (str "Email " (name frequency) " digest test initiated.") :status 200}
     {:body "Failed to initiate an email digest test." :status 500}))
 
   ([jwtoken :guard string? _medium :guard #(= % "slack") frequency :guard d-or-w]
   (if-let [digest-request (data/digest-request-for jwtoken frequency :slack false)]
-    {:body "Slack digest test initiated." :status 200}
+    {:body (str "Slack " (name frequency) " digest test initiated.") :status 200}
     {:body "Failed to initiate a Slack digest test." :status 500}))
 
   ([_jwtoken :guard string? _medium _frequency]
