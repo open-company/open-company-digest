@@ -84,7 +84,7 @@
 
 (defn start [pool]
 
-  (reset! db-pool pool) ; hold onto the DB pool reference)
+  (reset! db-pool pool) ; hold onto the DB pool reference
 
   (timbre/info "Starting daily digest schedule...")
   (reset! daily-digest-schedule daily-schedule)
