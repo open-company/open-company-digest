@@ -37,7 +37,7 @@
   ([conn :guard map? frequency skip-send?]
   (let [user-list (user-res/list-users-for-digest conn frequency)]
     (timbre/info "Initiating" frequency "run for" (count user-list) "users...")
-    (digest-run user-list frequency)))
+    (digest-run user-list frequency skip-send?)))
 
   ([user-list :guard sequential? frequency] (digest-run user-list frequency false))
 
