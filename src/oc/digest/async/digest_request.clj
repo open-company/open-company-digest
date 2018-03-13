@@ -61,7 +61,7 @@
 ;; ----- Activity → Digest -----
 
 (defn- post-url [org-slug board-slug uuid published-at]
-  (str (s/join "/" [config/ui-server-url org-slug board-slug "post" uuid]) "?at=" published-at))
+  (str (s/join "/" [config/ui-server-url org-slug "all-posts"]) "?at=" published-at))
 
 (defn- post [org-slug post]
   (let [comments (link-for "comments" post)]
