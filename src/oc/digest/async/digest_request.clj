@@ -30,6 +30,8 @@
    :org-name lib-schema/NonBlankStr
    :org-uuid lib-schema/UniqueID
    :team-id lib-schema/UniqueID
+   (schema/optional-key :first-name) (schema/maybe lib-schema/Str)
+   (schema/optional-key :last-name) (schema/maybe lib-schema/Str)
    (schema/optional-key :logo-url) (schema/maybe schema/Str)
    (schema/optional-key :logo-width) schema/Int
    (schema/optional-key :logo-height) schema/Int
@@ -89,6 +91,8 @@
   ([trigger jwtoken :slack]
   (let [team-id (:team-id trigger)
         claims (:claims (jwt/decode jwtoken))
+        first-name (:first-name claims)
+        last-name (:last-name claims)
         bots (:slack-bots claims)
         users (:slack-users claims)
         bot (first (get bots team-id))
@@ -98,13 +102,20 @@
       (assoc :receiver {:type :user
                         :slack-org-id (:slack-org-id slack-user)
                         :id (:id slack-user)})
-      (assoc :bot (dissoc bot :slack-org-id)))))
+      (assoc :bot (dissoc bot :slack-org-id))
+      (assoc :first-name first-name)
+     (assoc :last-name last-name))))
 
   ;; Email
   ([trigger jwtoken :email]
   (let [claims (:claims (jwt/decode jwtoken))
-        email (:email claims)]
-    (assoc trigger :email email))))
+        email (:email claims)
+        first-name (:first-name claims)
+        last-name (:last-name claims)]
+    (-> trigger
+     (assoc :email email)
+     (assoc :first-name first-name)
+     (assoc :last-name last-name)))))
     
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id :as org}
                  activity frequency]
