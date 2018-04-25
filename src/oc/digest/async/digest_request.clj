@@ -30,8 +30,8 @@
    :org-name lib-schema/NonBlankStr
    :org-uuid lib-schema/UniqueID
    :team-id lib-schema/UniqueID
-   (schema/optional-key :first-name) (schema/maybe lib-schema/Str)
-   (schema/optional-key :last-name) (schema/maybe lib-schema/Str)
+   (schema/optional-key :first-name) (schema/maybe schema/Str)
+   (schema/optional-key :last-name) (schema/maybe schema/Str)
    (schema/optional-key :logo-url) (schema/maybe schema/Str)
    (schema/optional-key :logo-width) schema/Int
    (schema/optional-key :logo-height) schema/Int
@@ -104,7 +104,7 @@
                         :id (:id slack-user)})
       (assoc :bot (dissoc bot :slack-org-id))
       (assoc :first-name first-name)
-     (assoc :last-name last-name))))
+      (assoc :last-name last-name))))
 
   ;; Email
   ([trigger jwtoken :email]
