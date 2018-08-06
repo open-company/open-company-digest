@@ -71,10 +71,10 @@
 ;; ----- Scheduler Component -----
 
 (def daily-time "7 AM EST" (jt/adjust (jt/with-zone (jt/zoned-date-time) "America/New_York") (jt/local-time 7)))
-(def weekly-time "7 PM EST on Sunday" (jt/adjust 
+(def weekly-time "7 AM EST on Monday" (jt/adjust 
                                         (jt/adjust (jt/with-zone (jt/zoned-date-time) "America/New_York")
-                                          (jt/local-time 19))                    
-                                        :first-in-month :sunday))
+                                          (jt/local-time 7))                    
+                                        :first-in-month :monday))
 
 (def daily-timeline (timeline/timeline (timeline/periodic-seq daily-time (tick/days 1)))) ; every day at daily-time
 (def weekly-timeline (timeline/timeline (timeline/periodic-seq weekly-time (tick/weeks 1)))); every week at weekly-time
