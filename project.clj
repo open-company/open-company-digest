@@ -13,31 +13,32 @@
 
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
-    [org.clojure/clojure "1.9.0"]
-    [org.clojure/tools.cli "0.3.5"] ; commandline parsing https://github.com/clojure/tools.cli
-    [http-kit "2.3.0-alpha5"] ; Web client/server http://http-kit.org/
+    [org.clojure/clojure "1.10.0-alpha6"]
+    [org.clojure/tools.cli "0.3.7"] ; commandline parsing https://github.com/clojure/tools.cli
+    [http-kit "2.3.0"] ; Web client/server http://http-kit.org/
     ;; Web application library https://github.com/ring-clojure/ring
-    [ring/ring-devel "1.6.3"]
+    [ring/ring-devel "1.7.0-RC1"]
     ;; Web application library https://github.com/ring-clojure/ring
     ;; NB: clj-time pulled in by oc.lib
     ;; NB: joda-time pulled in by oc.lib via clj-time
     ;; NB: commons-codec pulled in by oc.lib
-    [ring/ring-core "1.6.3" :exclusions [clj-time joda-time commons-codec]]
+    [ring/ring-core "1.7.0-RC1" :exclusions [clj-time joda-time commons-codec]]
     ;; Ring logging https://github.com/nberger/ring-logger-timbre
     ;; NB: com.taoensso/encore pulled in by oc.lib
     ;; NB: com.taoensso/timbre pulled in by oc.lib
     [ring-logger-timbre "0.7.6" :exclusions [com.taoensso/encore com.taoensso/timbre]] 
     ;; Web routing https://github.com/weavejester/compojure
-    [compojure "1.6.0"]
+    [compojure "1.6.1"]
     ;; HTTP client https://github.com/dakrone/clj-http
-    [clj-http "3.7.0"]
+    [clj-http "3.9.1"]
     ;; Simple scheduler https://github.com/juxt/tick
+    ;; NB: Don't upgrade to 0.4.0, it's not backward compatible as of 0.4.0-alpha on Aug. 6, 2018
     [tick "0.3.5"]
     ;; Clojure wrapper for Java 8 Date-Time https://github.com/dm3/clojure.java-time
-    [clojure.java-time "0.3.1"]
+    [clojure.java-time "0.3.2"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.16.2"]
+    [open-company/lib "0.16.13"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
     ;; if-let - More than one binding for if/when macros https://github.com/LockedOn/if-let
@@ -54,7 +55,7 @@
   ]
 
   :plugins [
-    [lein-ring "0.12.3"]
+    [lein-ring "0.12.4"]
     [lein-environ "1.1.0"] ; Get environment settings from different sources https://github.com/weavejester/environ
   ]
 
@@ -71,13 +72,13 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.2-alpha3" :exclusions [joda-time clj-time commons-codec]] 
+        [midje "1.9.2" :exclusions [joda-time clj-time commons-codec]] 
       ]
       :plugins [
         ;; Example-based testing https://github.com/marick/lein-midje
         [lein-midje "3.2.1"]
         ;; Linter https://github.com/jonase/eastwood
-        [jonase/eastwood "0.2.6-beta2"]
+        [jonase/eastwood "0.2.9"]
         ;; Static code search for non-idiomatic code https://github.com/jonase/kibit
         [lein-kibit "0.1.6" :exclusions [org.clojure/clojure]]
       ]
