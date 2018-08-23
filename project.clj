@@ -2,8 +2,8 @@
   :description "OpenCompany Digest Service"
   :url "https://github.com/open-company/open-company-digest"
   :license {
-    :name "Mozilla Public License v2.0"
-    :url "http://www.mozilla.org/MPL/2.0/"
+    :name "Mozilla Public License v2.0 with the Common Clause"
+    :url "https://github.com/open-company/open-company-digest/blob/mainline/LICENSE"
   }
 
   :min-lein-version "2.7.1"
@@ -114,6 +114,7 @@
     ;; Production environment
     :prod {
       :env {
+        :env "production"
         :db-name "open_company_auth"
         :hot-reload "false"
       }
