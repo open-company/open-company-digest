@@ -1,6 +1,5 @@
 # [OpenCompany](https://github.com/open-company) Digest Service
 
-[![MPL License](http://img.shields.io/badge/license-MPL-blue.svg?style=flat)](https://www.mozilla.org/MPL/2.0/)
 [![Build Status](https://travis-ci.org/open-company/open-company-digest.svg)](https://travis-ci.org/open-company/open-company-digest)
 [![Dependencies Status](https://versions.deps.co/open-company/open-company-digest/status.svg)](https://versions.deps.co/open-company/open-company-digest)
 
