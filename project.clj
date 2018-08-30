@@ -2,8 +2,8 @@
   :description "OpenCompany Digest Service"
   :url "https://github.com/open-company/open-company-digest"
   :license {
-    :name "Mozilla Public License v2.0 with the Common Clause"
-    :url "https://github.com/open-company/open-company-digest/blob/mainline/LICENSE"
+    :name "GNU Affero General Public License Version 3"
+    :url "https://www.gnu.org/licenses/agpl-3.0.en.html"
   }
 
   :min-lein-version "2.7.1"
