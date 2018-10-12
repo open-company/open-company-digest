@@ -237,6 +237,17 @@ lein run-daily
 lein run-weekly
 ```
 
+To trigger a digest request you can use the following urls:
+
+```console
+http://localhost:3008/_/email/weekly
+http://localhost:3008/_/email/daily
+http://localhost:3008/_/slack/weekly
+http://localhost:3008/_/slack/daily
+```
+
+Obviously you can replace the domain to run it on other environments.
+
 
 ## Technical Design
 
