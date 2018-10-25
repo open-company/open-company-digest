@@ -17,7 +17,9 @@
    :publisher lib-schema/Author
    :published-at lib-schema/ISO8601
    :comment-count schema/Int
-   :comment-authors [lib-schema/Author]})
+   :comment-authors [lib-schema/Author]
+   :must-see (schema/maybe schema/Bool)
+   :video-id (schema/maybe lib-schema/NonBlankStr)})
 
 (def DigestBoard
   {:name lib-schema/NonBlankStr
@@ -72,7 +74,9 @@
      :publisher (:publisher post)
      :published-at (:published-at post)
      :comment-count (or (:count comments) 0)
-     :comment-authors (or (map #(dissoc % :created-at) (:authors comments)) [])}))
+     :comment-authors (or (map #(dissoc % :created-at) (:authors comments)) [])
+     :must-see (:must-see post)
+     :video-id (:video-id post)}))
 
 (defn- board [org-slug posts]
   {:name (:board-name (first posts))
