@@ -40,7 +40,7 @@
 
   ([user :guard #(= (keyword (:digest-medium %)) :slack)] true) ; Slack user
 
-  ([user :guard #(and (= (keyword (:digest-meidum %)) :email) = (keyword (:status %)) :active)] true) ; active email user
+  ([user :guard #(and (= (keyword (:digest-medium %)) :email) = (keyword (:status %)) :active)] true) ; active email user
 
   ([_user] false)) ; no digest for you!
 
