@@ -19,7 +19,9 @@
    :comment-count schema/Int
    :comment-authors [lib-schema/Author]
    :must-see (schema/maybe schema/Bool)
-   :video-id (schema/maybe lib-schema/NonBlankStr)})
+   :video-id (schema/maybe lib-schema/NonBlankStr)
+   :video-image (schema/maybe schema/Str)
+   :video-duration (schema/maybe schema/Str)})
 
 (def DigestBoard
   {:name lib-schema/NonBlankStr
@@ -76,7 +78,9 @@
      :comment-count (or (:count comments) 0)
      :comment-authors (or (map #(dissoc % :created-at) (:authors comments)) [])
      :must-see (:must-see post)
-     :video-id (:video-id post)}))
+     :video-id (:video-id post)
+     :video-image (or (:video-image post) "")
+     :video-duration (or (:video-duration post) "")}))
 
 (defn- board [org-slug posts]
   {:name (:board-name (first posts))
