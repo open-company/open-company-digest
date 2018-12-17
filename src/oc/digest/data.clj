@@ -8,6 +8,7 @@
     [clj-http.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
+    [oc.lib.jwt :as jwt]
     [oc.digest.async.digest-request :as d-r]
     [oc.digest.config :as c]))
 
@@ -50,7 +51,8 @@
                         "with:" (log-activity activity))
           
           ;; Trigger the digest request for the appropriate medium
-          :else (d-r/send-trigger! (d-r/->trigger org activity frequency) jwtoken medium)))
+          :else (let [claims (:claims (jwt/decode jwtoken))]
+                  (d-r/send-trigger! (d-r/->trigger org activity frequency claims) claims medium))))
 
       ;; Failed to get activity for the digest
       (timbre/warn "Error requesting:" activity-url "for:" (d-r/log-token jwtoken) "start:" start
