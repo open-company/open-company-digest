@@ -5,8 +5,8 @@
             [amazonica.aws.sqs :as sqs]
             [taoensso.timbre :as timbre]
             [schema.core :as schema]
-            [oc.lib.jwt :as jwt]
             [oc.lib.schema :as lib-schema]
+            [oc.lib.jwt :as jwt]
             [oc.digest.config :as config]))
 
 ;; ----- Schema -----
@@ -61,18 +61,27 @@
   (let [claims (:claims (jwt/decode jwtoken))]
     (str "user-id " (:user-id claims) " email " (:email claims))))
 
+(defn log-claims [claims]
+  (str "user-id " (:user-id claims) " email " (:email claims)))
+
 (defn link-for [rel {links :links}]
   (some #(if (= (:rel %) rel) % false) links))
 
+
 ;; ----- Activity → Digest -----
 
-(defn- post-url [org-slug board-slug uuid published-at]
-  (str (s/join "/" [config/ui-server-url org-slug "all-posts"]) "?at=" published-at))
+(defn- post-url [org-slug board-slug secure-id id-token]
+  (str (s/join "/" [config/ui-server-url org-slug "post" secure-id]) "?id=" id-token))
 
-(defn- post [org-slug post]
-  (let [comments (link-for "comments" post)]
+(defn- post [org-slug claims post]
+  (let [comments (link-for "comments" post)
+        token-claims (-> claims
+                         (assoc :team-id (first (:teams claims)))
+                         (assoc :org-uuid (:org-uuid claims))
+                         (assoc :secure-uuid (:secure-uuid post)))
+        id-token (jwt/generate-id-token token-claims config/passphrase)]
     {:headline (:headline post)
-     :url (post-url org-slug (:board-slug post) (:uuid post) (:published-at post))
+     :url (post-url org-slug (:board-slug post) (:secure-uuid post) id-token)
      :publisher (:publisher post)
      :published-at (:published-at post)
      :comment-count (or (:count comments) 0)
@@ -82,23 +91,22 @@
      :video-image (or (:video-image post) "")
      :video-duration (or (:video-duration post) "")}))
 
-(defn- board [org-slug posts]
+(defn- board [org-slug claims posts]
   {:name (:board-name (first posts))
-   :posts (map #(post org-slug %) (reverse (sort-by :published-at posts)))})
+   :posts (map #(post org-slug claims %) (reverse (sort-by :published-at posts)))})
 
-(defn- boards [org-slug activity]
+(defn- boards [org-slug activity claims]
   (let [by-board (group-by :board-name activity)
         board-names (sort (keys by-board))]
-    (map #(board org-slug (get by-board %)) board-names)))
+    (map #(board org-slug claims (get by-board %)) board-names)))
 
 ;; ----- Digest Request Trigger -----
 
 (defun- trigger-for
   
   ;; Slack
-  ([trigger jwtoken :slack]
+  ([trigger claims :slack]
   (let [team-id (:team-id trigger)
-        claims (:claims (jwt/decode jwtoken))
         first-name (:first-name claims)
         last-name (:last-name claims)
         bots (:slack-bots claims)
@@ -115,9 +123,8 @@
       (assoc :last-name last-name))))
 
   ;; Email
-  ([trigger jwtoken :email]
-  (let [claims (:claims (jwt/decode jwtoken))
-        email (:email claims)
+  ([trigger claims :email]
+  (let [email (:email claims)
         first-name (:first-name claims)
         last-name (:last-name claims)]
     (-> trigger
@@ -126,7 +133,7 @@
      (assoc :last-name last-name)))))
     
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id :as org}
-                 activity frequency]
+                 activity frequency claims]
   (let [trigger {:type :digest
                  :digest-frequency (keyword frequency)
                  :org-slug org-slug
@@ -138,25 +145,25 @@
                                     :logo-width (:logo-width org)
                                     :logo-height (:logo-height org)})
                     trigger)]
-    (assoc with-logo :boards (boards org-slug activity))))
+    (assoc with-logo :boards (boards org-slug activity (assoc claims :org-uuid org-uuid)))))
 
-(defn send-trigger! [trigger jwtoken medium]
+(defn send-trigger! [trigger claims medium]
   (schema/validate DigestTrigger trigger) ; sanity check
   (let [slack? (= (keyword medium) :slack)
         queue (if slack? config/aws-sqs-bot-queue config/aws-sqs-email-queue)
-        medium-trigger (trigger-for trigger jwtoken medium)
+        medium-trigger (trigger-for trigger claims medium)
         trigger-schema (if slack? SlackTrigger EmailTrigger)]
     (if (lib-schema/valid? trigger-schema medium-trigger)
       ;; All is well, do the needful
       (do
-        (timbre/info "Digest request to queue:" queue "for:" (log-token jwtoken))
-        (timbre/trace "Digest request:" trigger "for:" (log-token jwtoken))
-        (timbre/info "Sending request to queue:" queue "for:" (log-token jwtoken))
+        (timbre/info "Digest request to queue:" queue "for:" (log-claims claims))
+        (timbre/trace "Digest request:" trigger "for:" (log-claims claims))
+        (timbre/info "Sending request to queue:" queue "for:" (log-claims claims))
         (sqs/send-message
           {:access-key config/aws-access-key-id
            :secret-key config/aws-secret-access-key}
           queue
           medium-trigger)
-        (timbre/info "Request sent to:" queue "for:" (log-token jwtoken)))
+        (timbre/info "Request sent to:" queue "for:" (log-claims claims)))
       ;; Trigger is no good
-      (timbre/warn "Digest request failed with invalid trigger:" trigger "for:" (log-token jwtoken)))))
+      (timbre/warn "Digest request failed with invalid trigger:" trigger "for:" (log-claims claims)))))
