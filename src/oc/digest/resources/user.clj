@@ -8,9 +8,9 @@
             [oc.digest.config :as config]))
 
 (def user-props [:user-id :teams :email :first-name :last-name :avatar-url
-                 :digest-medium :digest-frequency :status :slack-users])
+                 :digest-medium :status :slack-users])
 
-(def not-for-jwt [:digest-medium :digest-frequency :status])
+(def not-for-jwt [:digest-medium :status])
 
 (def for-jwt {:auth-source :digest
               :refresh-url "N/A"})
@@ -52,9 +52,5 @@
 ;; ----- User enumeration -----
 
 (defun list-users-for-digest
-  
-  ([conn :daily]
-  (for-digest conn (db-common/read-resources conn table-name :digest-frequency :daily user-props)))
-
-  ([conn :weekly]
-  (for-digest conn (db-common/read-resources conn table-name :digest-frequency :weekly user-props))))
+  [conn]
+  (for-digest conn (db-common/read-resources conn table-name user-props)))

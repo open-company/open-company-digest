@@ -22,28 +22,28 @@
 
 ;; ----- Digest Request Generation -----
 
-(defn- digest-for [user frequency skip-send?]
+(defn- digest-for [user skip-send?]
   (let [medium (or (keyword (:digest-medium user)) :email)]
     (try
-      (data/digest-request-for (:jwtoken user) frequency medium skip-send?)
+      (data/digest-request-for (:jwtoken user) medium skip-send?)
       (catch Exception e
-        (timbre/warn frequency "digest failed for user:" user)
+        (timbre/warn "Digest failed for user:" user)
         (timbre/error e)))))
 
 (defun digest-run 
 
-  ([conn :guard map? frequency] (digest-run conn frequency false))
+  ([conn :guard map?] (digest-run conn false))
 
-  ([conn :guard map? frequency skip-send?]
-  (let [user-list (user-res/list-users-for-digest conn frequency)]
-    (timbre/info "Initiating" frequency "run for" (count user-list) "users...")
-    (digest-run user-list frequency skip-send?)))
+  ([conn :guard map? skip-send?]
+  (let [user-list (user-res/list-users-for-digest conn)]
+    (timbre/info "Initiating digest run for" (count user-list) "users...")
+    (digest-run user-list skip-send?)))
 
-  ([user-list :guard sequential? frequency] (digest-run user-list frequency false))
+  ([user-list :guard sequential?] (digest-run user-list false))
 
-  ([user-list :guard sequential? frequency skip-send?]
-  (doall (pmap #(digest-for % frequency skip-send?) user-list))
-  (timbre/info "Done with" frequency "run for" (count user-list) "users.")))
+  ([user-list :guard sequential? skip-send?]
+  (doall (pmap #(digest-for % skip-send?) user-list))
+  (timbre/info "Done with digest run for" (count user-list) "users.")))
 
 ;; ----- Scheduled Fns -----
 
@@ -60,27 +60,13 @@
       (catch Exception e
         (timbre/error e)))))
 
-(defn- weekly-run [{tick :tick/date}]
-  (when (new-tick? tick)
-    (timbre/info "New weekly digest run initiated with tick:" tick)
-    (try
-      (pool/with-pool [conn @db-pool] (digest-run conn :weekly))
-      (catch Exception e
-        (timbre/error e)))))
-
 ;; ----- Scheduler Component -----
 
 (def daily-time "7 AM EST" (jt/adjust (jt/with-zone (jt/zoned-date-time) "America/New_York") (jt/local-time 7)))
-(def weekly-time "7 AM EST on Monday" (jt/adjust 
-                                        (jt/adjust (jt/with-zone (jt/zoned-date-time) "America/New_York")
-                                          (jt/local-time 7))                    
-                                        :first-in-month :monday))
 
 (def daily-timeline (timeline/timeline (timeline/periodic-seq daily-time (tick/days 1)))) ; every day at daily-time
-(def weekly-timeline (timeline/timeline (timeline/periodic-seq weekly-time (tick/weeks 1)))); every week at weekly-time
 
 (def daily-schedule (schedule/schedule daily-run daily-timeline))
-(def weekly-schedule (schedule/schedule weekly-run weekly-timeline))
 
 (defn start [pool]
 
@@ -88,11 +74,7 @@
 
   (timbre/info "Starting daily digest schedule...")
   (reset! daily-digest-schedule daily-schedule)
-  (schedule/start daily-schedule (clock/clock-ticking-in-seconds))
-
-  (timbre/info "Starting weekly digest schedule...")
-  (reset! weekly-digest-schedule weekly-schedule)
-  (schedule/start weekly-schedule (clock/clock-ticking-in-seconds)))
+  (schedule/start daily-schedule (clock/clock-ticking-in-seconds)))
 
 (defn stop []
 
@@ -101,9 +83,4 @@
     (schedule/stop @daily-digest-schedule)
     (reset! daily-digest-schedule false))
   
-  (when @weekly-digest-schedule
-    (timbre/info "Stopping weekly digest schedule...")
-    (schedule/stop @weekly-digest-schedule))
-    (reset! weekly-digest-schedule daily-schedule)
-
   (reset! db-pool false))

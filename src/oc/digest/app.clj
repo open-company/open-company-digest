@@ -38,30 +38,27 @@
 
 (defonce cookie-name (str c/cookie-prefix "jwt"))
 
-(defn d-or-w [frequency]
-  (or (= frequency "weekly") (= frequency "daily")))
-
 (defun- test-digest
   
-  ([cookies :guard map? medium frequency]
+  ([cookies :guard map? medium]
     (if-let* [jwtoken (-> cookies (get cookie-name) :value)
               _valid? (jwt/valid? jwtoken c/passphrase)]
-      (test-digest jwtoken medium frequency)
+      (test-digest jwtoken medium)
       {:body "An unexpired login with a valid JWT cookie required for test digest request.\n
               Please refresh your login with the Web UI before making this request." :status 401}))
 
-  ([jwtoken :guard string? _medium :guard #(= % "email") frequency :guard d-or-w]
-  (if-let [digest-request (data/digest-request-for jwtoken frequency :email false)]
-    {:body (str "Email " (name frequency) " digest test initiated.") :status 200}
+  ([jwtoken :guard string? _medium :guard #(= % "email")]
+  (if-let [digest-request (data/digest-request-for jwtoken :email false)]
+    {:body (str "Email digest test initiated.") :status 200}
     {:body "Failed to initiate an email digest test." :status 500}))
 
-  ([jwtoken :guard string? _medium :guard #(= % "slack") frequency :guard d-or-w]
-  (if-let [digest-request (data/digest-request-for jwtoken frequency :slack false)]
-    {:body (str "Slack " (name frequency) " digest test initiated.") :status 200}
+  ([jwtoken :guard string? _medium :guard #(= % "slack")]
+  (if-let [digest-request (data/digest-request-for jwtoken :slack false)]
+    {:body (str "Slack digest test initiated.") :status 200}
     {:body "Failed to initiate a Slack digest test." :status 500}))
 
-  ([_jwtoken :guard string? _medium _frequency]
-  {:body "Only 'daily' or 'weekly' digest testing is supported at this time." :status 501}))
+  ([_jwtoken _medium]
+  {:body "Only 'email' or 'Slack' digest testing is supported at this time." :status 501}))
 
 ;; ----- Request Routing -----
 
@@ -70,8 +67,8 @@
     (GET "/ping" [] {:body "OpenCompany Digest Service: OK" :status 200}) ; Up-time monitor
     (GET "/---error-test---" [] (/ 1 0))
     (GET "/---500-test---" [] {:body "Testing bad things." :status 500})
-    (GET "/_/:medium/:frequency" [medium frequency :as request]
-      (test-digest (:cookies request) medium frequency))))
+    (GET "/_/:medium/run" [medium :as request]
+      (test-digest (:cookies request) medium))))
 
 ;; ----- System Startup -----
 
