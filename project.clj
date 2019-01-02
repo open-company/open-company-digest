@@ -32,7 +32,7 @@
     ;; HTTP client https://github.com/dakrone/clj-http
     [clj-http "3.9.1"]
     ;; Simple scheduler https://github.com/juxt/tick
-    ;; NB: Don't upgrade to 0.4.0, it's not backward compatible as of 0.4.0-alpha on Aug. 6, 2018
+    ;; NB: Don't upgrade to +0.4, it's not backward compatible as timeline/clock/schedele namespaces all deprecated
     [tick "0.3.5"]
     ;; Clojure wrapper for Java 8 Date-Time https://github.com/dm3/clojure.java-time
     [clojure.java-time "0.3.2"]
@@ -136,6 +136,11 @@
                  '[clojure.string :as s]
                  '[rethinkdb.query :as r]
                  '[schema.core :as schema]
+                 '[java-time :as jt]
+                 '[tick.core :as tick]
+                 '[tick.timeline :as timeline]
+                 '[tick.clock :as clock]
+                 '[tick.schedule :as schedule]
                  '[oc.lib.db.common :as db-common]
                  '[oc.lib.schema :as lib-schema]
                  '[oc.lib.jwt :as jwt]

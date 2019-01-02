@@ -8,7 +8,7 @@
             [oc.digest.config :as config]))
 
 (def user-props [:user-id :teams :email :first-name :last-name :avatar-url
-                 :digest-medium :status :slack-users])
+                 :digest-medium :status :slack-users :timezone])
 
 (def not-for-jwt [:digest-medium :status])
 
@@ -45,6 +45,7 @@
   ([_user] false)) ; no digest for you!
 
 (defn- for-digest [conn users]
+  (println (str "USERS: " users))
   (->> users
     (filter allowed?)
     (pmap #(with-jwtoken conn %))))
