@@ -4,6 +4,7 @@
             [taoensso.timbre :as timbre]
             [clj-time.core :as t]
             [clj-time.format :as format]
+            [java-time :as jt]
             [oc.lib.db.common :as db-common]
             [oc.lib.jwt :as jwt]
             [oc.digest.config :as config]))
@@ -24,9 +25,9 @@
 ;; ----- TimeZone gymnastics -----
 
 (defn- now-for-tz [instant user]
- (timbre/info (:timezone user) (:email user))
- (timbre/info instant)
- (assoc user :now? false))
+  (let [time-for-user (jt/with-zone-same-instant instant (:timezone user))]
+    (timbre/debug "User" (:email user) "is in TZ:" (:timezone user) "where it is:" time-for-user)) 
+  (assoc user :now? false))
 
 ;; ----- Prep raw user for digest request -----
 
