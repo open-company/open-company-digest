@@ -1,6 +1,7 @@
 (ns oc.digest.resources.user
   "Enumerate users stored in RethinkDB and generate JWTokens."
   (:require [defun.core :refer (defun defun-)]
+            [taoensso.timbre :as timbre]
             [clj-time.core :as t]
             [clj-time.format :as format]
             [oc.lib.db.common :as db-common]
@@ -19,6 +20,13 @@
 
 (def table-name :users)
 (def primary-key :user-id)
+
+;; ----- TimeZone gymnastics -----
+
+(defn- now-for-tz [instant user]
+ (timbre/info (:timezone user) (:email user))
+ (timbre/info instant)
+ (assoc user :now? false))
 
 ;; ----- Prep raw user for digest request -----
 
@@ -44,14 +52,15 @@
 
   ([_user] false)) ; no digest for you!
 
-(defn- for-digest [conn users]
-  (println (str "USERS: " users))
+(defn- for-digest [conn instant users]
   (->> users
     (filter allowed?)
+    (pmap #(now-for-tz instant %))
+    (filter :now?)
     (pmap #(with-jwtoken conn %))))
 
 ;; ----- User enumeration -----
 
 (defun list-users-for-digest
-  [conn]
-  (for-digest conn (db-common/read-resources conn table-name user-props)))
+  [conn instant]
+  (for-digest conn instant (db-common/read-resources conn table-name user-props)))

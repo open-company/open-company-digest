@@ -37,33 +37,35 @@
 
 (defun digest-run 
 
-  ([conn :guard map?] (digest-run conn false))
+  ([conn :guard map? instant] (digest-run conn instant false))
 
-  ([conn :guard map? skip-send?]
-  (let [user-list (user-res/list-users-for-digest conn)]
-    (timbre/info "Initiating digest run for" (count user-list) "users...")
-    (digest-run user-list skip-send?)))
+  ([conn :guard map? instant skip-send?]
+  (let [user-list (user-res/list-users-for-digest conn instant)]
+    (if (empty? user-list)
+      (timbre/info "No users for this run, skipping run.")
+      (digest-run user-list skip-send?))))
 
   ([user-list :guard sequential?] (digest-run user-list false))
 
   ([user-list :guard sequential? skip-send?]
+  (timbre/info "Initiating digest run for" (count user-list) "users...")
   (doall (pmap #(digest-for % skip-send?) user-list))
   (timbre/info "Done with digest run for" (count user-list) "users.")))
 
 ;; ----- Scheduled Fns -----
 
-(defn- on-tick [{tick :tick/date}]
-  (timbre/info "New digest run initiated with tick:" tick))
-    ; (try
-    ;   (pool/with-pool [conn @db-pool] (digest-run conn))
-    ;   (catch Exception e
-    ;     (timbre/error e)))))
+(defn- on-tick [{instant :tick/date}]
+  (timbre/info "New digest run initiated with tick:" instant)
+  (try
+    (pool/with-pool [conn @db-pool] (digest-run conn instant))
+    (catch Exception e
+      (timbre/error e))))
 
 ;; ----- Scheduler Component -----
 
-(defn- top-of-the-hour [] (jt/plus (jt/truncate-to (jt/zoned-date-time) :hours) (jt/hours 1)))
+(defn- top-of-the-hour [] (jt/plus (jt/truncate-to (jt/zoned-date-time) :minutes) (jt/minutes 1)))
 
-(def hourly-timeline (timeline/timeline (timeline/periodic-seq (top-of-the-hour) (tick/hours 1)))) ; every hour
+(def hourly-timeline (timeline/timeline (timeline/periodic-seq (top-of-the-hour) (tick/minutes 1)))) ; every hour
 
 (def hourly-schedule (schedule/schedule on-tick hourly-timeline))
 
