@@ -70,8 +70,9 @@
 
 ;; ----- Activity → Digest -----
 
-(defn- post-url [org-slug board-slug secure-id id-token]
-  (str (s/join "/" [config/ui-server-url org-slug "post" secure-id]) "?id=" id-token))
+(defn- post-url [org-slug board-slug uuid id-token]
+  (str (s/join "/" [config/ui-server-url org-slug board-slug "post" uuid])
+       "?id=" id-token))
 
 (defn- post [org-slug claims post]
   (let [comments (link-for "comments" post)
@@ -81,7 +82,7 @@
                          (assoc :secure-uuid (:secure-uuid post)))
         id-token (jwt/generate-id-token token-claims config/passphrase)]
     {:headline (:headline post)
-     :url (post-url org-slug (:board-slug post) (:secure-uuid post) id-token)
+     :url (post-url org-slug (:board-slug post) (:uuid post) id-token)
      :publisher (:publisher post)
      :published-at (:published-at post)
      :comment-count (or (:count comments) 0)
