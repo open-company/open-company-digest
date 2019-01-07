@@ -4,6 +4,7 @@
   (:require
     [clojure.tools.cli :as cli]
     [oc.lib.db.pool :as db]
+    [java-time :as jt]
     [oc.digest.config :as c]
     [oc.digest.schedule :as schedule]))
 
@@ -18,6 +19,6 @@
         dry? (-> options :options :dry)
         conn (db/init-conn c/db-options)]
     (println "Enumerating users for a digest run...")
-    (schedule/digest-run conn dry?)
+    (schedule/digest-run conn (jt/zoned-date-time) dry?)
     (println "DONE\n")
     (System/exit 0)))

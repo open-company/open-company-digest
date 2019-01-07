@@ -17,6 +17,8 @@
 (def for-jwt {:auth-source :digest
               :refresh-url "N/A"})
 
+(def digest-time (jt/local-time 7)) ; 7AM local to the user
+
 ;; ----- RethinkDB metadata -----
 
 (def table-name :users)
@@ -25,9 +27,15 @@
 ;; ----- TimeZone gymnastics -----
 
 (defn- now-for-tz [instant user]
-  (let [time-for-user (jt/with-zone-same-instant instant (:timezone user))]
-    (timbre/debug "User" (:email user) "is in TZ:" (:timezone user) "where it is:" time-for-user)) 
-  (assoc user :now? false))
+  (let [time-for-user (jt/with-zone-same-instant instant (:timezone user))
+        digest-time-for-user (jt/adjust (jt/with-zone (jt/zoned-date-time) (:timezone user)) digest-time)
+        time-for-digest? (< (Math/abs (jt/time-between time-for-user digest-time-for-user :minutes)) 59)]
+    (timbre/debug "User" (:email user) "is in TZ:" (:timezone user) "where it is:" time-for-user)
+    (timbre/debug "Digest time for user" (:email user) ":" digest-time-for-user)
+    (timbre/debug "Minutes between now and digest time for for user" (:email user) ":"
+      (jt/time-between time-for-user digest-time-for-user :minutes))
+    (timbre/debug "Digest time for user?" time-for-digest?)
+  (assoc user :now? time-for-digest?)))
 
 ;; ----- Prep raw user for digest request -----
 

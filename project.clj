@@ -145,6 +145,7 @@
                  '[oc.lib.schema :as lib-schema]
                  '[oc.lib.jwt :as jwt]
                  '[oc.digest.config :as config]
+                 '[oc.digest.schedule :as digest-schedule]
                  '[oc.digest.resources.user :as user-res])
       ]
     }]
