@@ -117,6 +117,7 @@
         :env "production"
         :db-name "open_company_auth"
         :hot-reload "false"
+        :log-level "debug"
       }
     }
 
