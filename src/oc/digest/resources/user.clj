@@ -29,12 +29,14 @@
 (defn- now-for-tz [instant user]
   (let [time-for-user (jt/with-zone-same-instant instant (:timezone user))
         digest-time-for-user (jt/adjust (jt/with-zone (jt/zoned-date-time) (:timezone user)) digest-time)
-        time-for-digest? (< (Math/abs (jt/time-between time-for-user digest-time-for-user :minutes)) 59)]
+        time-delta (jt/time-between time-for-user digest-time-for-user :minutes)
+        time-for-digest? (and ; occurs now or within the next 59 mins?
+                            (or (pos? time-delta) (zero? time-delta))
+                            (< time-delta 59))]
     (timbre/debug "User" (:email user) "is in TZ:" (:timezone user) "where it is:" time-for-user)
     (timbre/debug "Digest time for user" (:email user) ":" digest-time-for-user)
-    (timbre/debug "Minutes between now and digest time for for user" (:email user) ":"
-      (jt/time-between time-for-user digest-time-for-user :minutes))
-    (timbre/debug "Digest time for user?" time-for-digest?)
+    (timbre/debug "Minutes between now and digest time for for user" (:email user) ":" time-delta)
+    (timbre/debug "Digest now for user" (:email user) "?" time-for-digest?)
   (assoc user :now? time-for-digest?)))
 
 ;; ----- Prep raw user for digest request -----
