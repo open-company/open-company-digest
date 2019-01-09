@@ -29,7 +29,6 @@
 
 (def DigestTrigger
   {:type (schema/enum :digest)
-   :digest-frequency (schema/enum :daily :weekly)
    :org-slug lib-schema/NonBlankStr
    :org-name lib-schema/NonBlankStr
    :org-uuid lib-schema/UniqueID
@@ -134,9 +133,8 @@
      (assoc :last-name last-name)))))
     
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id :as org}
-                 activity frequency claims]
+                 activity claims]
   (let [trigger {:type :digest
-                 :digest-frequency (keyword frequency)
                  :org-slug org-slug
                  :org-name org-name
                  :org-uuid org-uuid
