@@ -23,7 +23,7 @@ To get started, head to: [Carrot](https://carrot.io/)
 
 ## Overview
 
-Daily and Weekly Slack and Email digests.
+Daily Slack and Email digests.
 
 ## Local Setup
 
@@ -31,7 +31,7 @@ Prospective users of [Carrot](https://carrot.io/) should get started by going to
 
 Most of the dependencies are internal, meaning [Leiningen](https://github.com/technomancy/leiningen) will handle getting them for you. There are a few exceptions:
 
-* [Java 8](http://www.oracle.com/technetwork/java/javase/downloads/index.html) - a Java 8 JRE is needed to run Clojure
+* [Java 8+](http://www.oracle.com/technetwork/java/javase/downloads/index.html) - a Java 8+ JRE is needed to run Clojure
 * [Leiningen](https://github.com/technomancy/leiningen) v2.7.1+ - Clojure's build and dependency management tool
 * [RethinkDB](http://rethinkdb.com/) v2.3.6+ - a multi-modal (document, key/value, relational) open source NoSQL database
 
@@ -213,37 +213,23 @@ To create a production build run:
 lein build
 ```
 
-To initiate a test of a daily or weekly digest run (nothing will be sent out):
+To initiate a test digest run (nothing will be sent out):
 
 ```console
-lein dry-run-daily
+lein dry-run
 ```
 
--or-
+To initiate a digest run:
 
 ```console
-lein dry-run-weekly
+lein wet-run
 ```
 
-To initiate a daily or weekly digest run:
+To trigger a digest request, you can also use the following urls:
 
 ```console
-lein run-daily
-```
-
--or-
-
-```console
-lein run-weekly
-```
-
-To trigger a digest request you can use the following urls:
-
-```console
-http://localhost:3008/_/email/weekly
-http://localhost:3008/_/email/daily
-http://localhost:3008/_/slack/weekly
-http://localhost:3008/_/slack/daily
+http://localhost:3008/_/email/run
+http://localhost:3008/_/slack/run
 ```
 
 Obviously you can replace the domain to run it on other environments.
@@ -251,14 +237,12 @@ Obviously you can replace the domain to run it on other environments.
 
 ## Technical Design
 
-The Digest Service is composed of 4 main responsibilities:
+The Digest Service is composed of 2 main responsibilities:
 
-- Send daily email digests to users
-- Send daily Slack digests to users
-- Send weekly email digests to users
-- Send weekly Slack digests to users
+- Send a daily email digests to users in a time appropriate for their timezone
+- Send a daily Slack digests to users in a time appropriate for their timezone
 
-The Digest Service runs on a daily and weekly schedule, or a digest run can be invoked manually. It uses read-only access to the RethinkDB database of the [Authorization Service](https://github.com/open-company/open-company-auth) to enumerate users that have requested a digest. For each of those users, a digest request is generated for each organization the user has access to (most users just have 1 organization) by generating a [JSON Web Token](https://jwt.io/) for that user, using the JWToken to request a date range of activity for the particular user and the particular org from the REST API of [Storage Service](https://github.com/open-company/open-company-storage), and then generating a JSON digest request, sent via [SQS](https://aws.amazon.com/sqs/), to either the [Email Service](https://github.com/open-company/open-company-email) or [Bot Service](https://github.com/open-company/open-company-bot).
+The Digest Service runs on an hourly schedule so that users get the daily digest in their own timezone, or a digest run can be invoked manually. It uses read-only access to the RethinkDB database of the [Authorization Service](https://github.com/open-company/open-company-auth) to enumerate users. For each of those users, a digest request is generated for each organization the user has access to (most users just have 1 organization) by generating a [JSON Web Token](https://jwt.io/) for that user, using the JWToken to request a date range of activity for the particular user and the particular org from the REST API of [Storage Service](https://github.com/open-company/open-company-storage), and then generating a JSON digest request, sent via [SQS](https://aws.amazon.com/sqs/), to either the [Email Service](https://github.com/open-company/open-company-email) or [Bot Service](https://github.com/open-company/open-company-bot).
 
 
 ## Testing
@@ -283,7 +267,7 @@ Please note that this project is released with a [Contributor Code of Conduct](h
 
 Distributed under the [GNU Affero General Public License Version 3](https://www.gnu.org/licenses/agpl-3.0.en.html).
 
-Copyright © 2017-2018 OpenCompany, LLC
+Copyright © 2017-2019 OpenCompany, LLC
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
