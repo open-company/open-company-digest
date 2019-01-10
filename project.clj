@@ -72,7 +72,7 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.4" :exclusions [joda-time clj-time commons-codec]] 
+        [midje "1.9.5" :exclusions [joda-time clj-time commons-codec]] 
       ]
       :plugins [
         ;; Example-based testing https://github.com/marick/lein-midje

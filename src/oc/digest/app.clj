@@ -78,6 +78,7 @@
     "Database: " c/db-name "\n"
     "Database pool: " c/db-pool-size "\n"
     "AWS SQS email queue: " c/aws-sqs-email-queue "\n"
+    "AWS SQS bot queue: " c/aws-sqs-bot-queue "\n"
     "Hot-reload: " c/hot-reload "\n"
     "Sentry: " c/dsn "\n\n"
     (when c/intro? "Ready to serve...\n"))))
