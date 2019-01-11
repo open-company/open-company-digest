@@ -69,6 +69,4 @@
                 (component/using
                   (map->HttpKit {:options {:port port}})
                   [:handler])
-                "N/A")
-
-    ))
+                "N/A")))
