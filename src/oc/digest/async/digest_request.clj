@@ -18,6 +18,7 @@
    :published-at lib-schema/ISO8601
    :comment-count schema/Int
    :comment-authors [lib-schema/Author]
+   :body (schema/maybe schema/Str)
    :must-see (schema/maybe schema/Bool)
    :video-id (schema/maybe lib-schema/NonBlankStr)
    :video-image (schema/maybe schema/Str)
@@ -81,6 +82,7 @@
                          (assoc :secure-uuid (:secure-uuid post)))
         id-token (jwt/generate-id-token token-claims config/passphrase)]
     {:headline (:headline post)
+     :body (:body post)
      :url (post-url org-slug (:board-slug post) (:uuid post) id-token)
      :publisher (:publisher post)
      :published-at (:published-at post)
