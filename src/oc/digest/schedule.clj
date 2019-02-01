@@ -54,12 +54,19 @@
 
 ;; ----- Scheduled Fns -----
 
+
+(defn- new-tick?
+  "Check if this is a new tick, or if it is just the scheduler catching up with now."
+  [tick]
+  (.isAfter (.plusSeconds (.toInstant tick) 60) (jt/instant)))
+
 (defn- on-tick [{instant :tick/date}]
-  (timbre/info "New digest run initiated with tick:" instant)
-  (try
-    (pool/with-pool [conn @db-pool] (digest-run conn instant))
-    (catch Exception e
-      (timbre/error e))))
+  (when (new-tick? instant)
+    (timbre/info "New digest run initiated with tick:" instant)
+    (try
+      (pool/with-pool [conn @db-pool] (digest-run conn instant))
+      (catch Exception e
+        (timbre/error e)))))
 
 ;; ----- Scheduler Component -----
 
