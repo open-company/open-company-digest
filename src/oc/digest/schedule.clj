@@ -54,7 +54,6 @@
 
 ;; ----- Scheduled Fns -----
 
-
 (defn- new-tick?
   "Check if this is a new tick, or if it is just the scheduler catching up with now."
   [tick]

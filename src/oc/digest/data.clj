@@ -26,7 +26,7 @@
 ;; ----- Digest Request Generation -----
 
 (defn digest-request-for
-  "Recursize function that, given a JWT token, makes a sequence of HTTP requests to get all posts data for
+  "Recursive function that, given a JWT token, makes a sequence of HTTP requests to get all posts data for
   each org the user is a team member of, and creates a digest request for each."
   
   ;; Need to get an org's activity from its activity link
