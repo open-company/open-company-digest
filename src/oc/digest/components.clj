@@ -52,6 +52,10 @@
     (schedule/stop)
     (dissoc component :scheduler false)))
 
+(defn db-only-digest-system [_opts]
+  (component/system-map
+   :db-pool (map->RethinkPool {:size c/db-pool-size :regenerate-interval 5})))
+
 (defn digest-system [{:keys [port handler-fn]}]
   (component/system-map
     :db-pool (map->RethinkPool {:size c/db-pool-size :regenerate-interval 5})
