@@ -88,4 +88,4 @@
 
 (defun list-users-for-digest
   [conn instant]
-  (for-digest conn instant (db-common/read-resources conn table-name user-props)))
+  (for-digest conn instant (db-common/read-resources conn table-name)))
