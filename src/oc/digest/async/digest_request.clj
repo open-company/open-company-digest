@@ -37,6 +37,7 @@
    :team-id lib-schema/UniqueID
    (schema/optional-key :first-name) (schema/maybe schema/Str)
    (schema/optional-key :last-name) (schema/maybe schema/Str)
+   (schema/optional-key :user-id) (schema/maybe schema/Str)
    (schema/optional-key :logo-url) (schema/maybe schema/Str)
    (schema/optional-key :logo-width) schema/Int
    (schema/optional-key :logo-height) schema/Int
@@ -113,6 +114,7 @@
   (let [team-id (:team-id trigger)
         first-name (:first-name claims)
         last-name (:last-name claims)
+        user-id (:user-id claims)
         bots (:slack-bots claims)
         users (:slack-users claims)
         bot (first (get bots team-id))
@@ -124,7 +126,8 @@
                         :id (:id slack-user)})
       (assoc :bot (dissoc bot :slack-org-id))
       (assoc :first-name first-name)
-      (assoc :last-name last-name))))
+      (assoc :last-name last-name)
+      (assoc :user-id user-id))))
 
   ;; Email
   ([trigger claims :email]
