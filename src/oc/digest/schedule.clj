@@ -92,3 +92,21 @@
     (reset! digest-schedule false))
   
   (reset! db-pool false))
+
+;; ----- REPL -----
+
+(comment
+
+  (require '[oc.digest.schedule :as digest-schedule] :reload)
+
+  ;; Top of the current hour
+  (def i (jt/truncate-to (jt/zoned-date-time) :hours))
+
+  ;; Adjust the hour as needed
+  (def i (jt/minus i (jt/hours 1)))
+  (def i (jt/plus i (jt/hours 1)))
+
+  ;; Kick off a digest run
+  (digest-schedule/digest-run conn i)
+
+)

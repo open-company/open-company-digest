@@ -97,8 +97,8 @@
 
 (comment
 
-(require '[oc.digest.resources.user :as user] :reload)
+  (require '[oc.digest.resources.user :as user] :reload)
 
-(user-res/list-users-for-digest conn (jt/zoned-date-time))
+  (user-res/list-users-for-digest conn (jt/zoned-date-time))
 
 )
