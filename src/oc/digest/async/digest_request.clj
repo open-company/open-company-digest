@@ -19,6 +19,7 @@
    :comment-count schema/Int
    :comment-authors [lib-schema/Author]
    :body (schema/maybe schema/Str)
+   :uuid (schema/maybe lib-schema/NonBlankStr)
    :must-see (schema/maybe schema/Bool)
    :video-id (schema/maybe lib-schema/NonBlankStr)
    :video-image (schema/maybe schema/Str)
@@ -88,6 +89,7 @@
      :published-at (:published-at post)
      :comment-count (or (:count comments) 0)
      :comment-authors (or (map #(dissoc % :created-at) (:authors comments)) [])
+     :uuid (:uuid post)
      :must-see (:must-see post)
      :video-id (:video-id post)
      :video-image (or (:video-image post) "")
