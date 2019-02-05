@@ -19,6 +19,8 @@
 
 (def digest-time (jt/local-time 7)) ; 7AM local to the user
 
+(def default-tz "America/New_York")
+
 ;; ----- RethinkDB metadata -----
 
 (def table-name :users)
@@ -34,10 +36,11 @@
   our schedule ticks once per UTC hour, and some timezones are not full hours offset from UTC).
   "
   [instant user]
-  (let [;; schedule tick time in the user's local time zone
-        time-for-user (jt/with-zone-same-instant instant (:timezone user))
+  (let [user-tz (or (:timezone user) default-tz)
+        ;; schedule tick time in the user's local time zone
+        time-for-user (jt/with-zone-same-instant instant user-tz)
         ;; 7 AM local time for the user
-        digest-time-for-user (jt/adjust (jt/with-zone (jt/zoned-date-time) (:timezone user)) digest-time)
+        digest-time-for-user (jt/adjust (jt/with-zone (jt/zoned-date-time) user-tz) digest-time)
         ;; The delta in minutes between schedule tick time and 7AM in the users TZ
         time-delta (jt/time-between time-for-user digest-time-for-user :minutes)
         ;; +/-24h is same as 0h, we don't care about being a day ahead or behind UTC
@@ -47,7 +50,7 @@
         time-for-digest? (and
                             (or (zero? adjusted-delta) (pos? adjusted-delta))
                             (< adjusted-delta 59))]
-    (timbre/debug "User" (:email user) "is in TZ:" (:timezone user) "where it is:" time-for-user)
+    (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" time-for-user)
     (timbre/debug "Digest time for user" (:email user) ":" digest-time-for-user)
     (timbre/debug "Minutes between now and digest time for for user" (:email user) ":" adjusted-delta)
     (timbre/debug "Digest now for user" (:email user) "?" time-for-digest?)
@@ -89,3 +92,13 @@
 (defun list-users-for-digest
   [conn instant]
   (for-digest conn instant (db-common/read-resources conn table-name)))
+
+;; ----- REPL -----
+
+(comment
+
+(require '[oc.digest.resources.user :as user] :reload)
+
+(user-res/list-users-for-digest conn (jt/zoned-date-time))
+
+)
