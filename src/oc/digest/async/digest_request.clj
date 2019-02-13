@@ -10,6 +10,13 @@
             [oc.digest.config :as config]))
 
 ;; ----- Schema -----
+(def DigestReaction
+  {:reaction schema/Str
+   :count schema/Int
+   :authors [schema/Str]
+   :author-ids [schema/Str]
+   :reacted schema/Bool})
+
 
 (def DigestPost
   {:headline (schema/maybe schema/Str)
@@ -18,6 +25,7 @@
    :published-at lib-schema/ISO8601
    :comment-count schema/Int
    :comment-authors [lib-schema/Author]
+   :reactions (schema/maybe [DigestReaction])
    :body (schema/maybe schema/Str)
    :uuid (schema/maybe lib-schema/NonBlankStr)
    :must-see (schema/maybe schema/Bool)
@@ -77,7 +85,8 @@
        "?id=" id-token))
 
 (defn- post [org-slug claims post]
-  (let [comments (link-for "comments" post)
+  (let [reactions-data (:reactions post)
+        comments (link-for "comments" post)
         token-claims (-> claims
                          (assoc :team-id (first (:teams claims)))
                          (assoc :org-uuid (:org-uuid claims))
@@ -90,6 +99,7 @@
      :published-at (:published-at post)
      :comment-count (or (:count comments) 0)
      :comment-authors (or (map #(dissoc % :created-at) (:authors comments)) [])
+     :reactions (or (map #(dissoc % :links) reactions-data) [])
      :uuid (:uuid post)
      :must-see (:must-see post)
      :video-id (:video-id post)
