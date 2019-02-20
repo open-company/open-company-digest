@@ -25,7 +25,7 @@
    :published-at lib-schema/ISO8601
    :comment-count schema/Int
    :comment-authors [lib-schema/Author]
-   :reactions (schema/maybe [DigestReaction])
+   :reactions [DigestReaction]
    :body (schema/maybe schema/Str)
    :uuid (schema/maybe lib-schema/NonBlankStr)
    :must-see (schema/maybe schema/Bool)
