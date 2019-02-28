@@ -155,6 +155,7 @@
                  :org-slug org-slug
                  :org-name org-name
                  :org-uuid org-uuid
+                 :user-id (:user-id claims)
                  :team-id team-id}
         with-logo (if logo-url
                     (merge trigger {:logo-url logo-url
