@@ -118,17 +118,15 @@
     (str item-count " " item-name (when (> item-count 1) "s") " by " author-attribution)))
 
 (defn- interaction-attribution [comment-authors comment-count reaction-data receiver]
-  (let [comments (text/attribution 3 comment-count "comment" comment-authors)
-        reaction-authors (map #(hash-map :name %)
-                              (flatten (map :authors reaction-data)))
-        reaction-author-ids (or (flatten (map :author-ids reaction-data)) [])
-        reaction-authors-you (if (some #(= % (:user-id receiver))
-                                       reaction-author-ids)
-                               (map #(if (= (:name receiver) (:name %))
-                                       (assoc % :name "you")
-                                       %)
-                                    reaction-authors)
-                               reaction-authors)
+  (let [reaction-authors-ids (flatten (map :author-ids reaction-data))
+        reaction-authors (zipmap reaction-authors-ids (flatten (map :authors reaction-data)))
+        reaction-authors-you (map #(if (= (:user-id receiver) %)
+                                       (hash-map :user-id % :name "you")
+                                       (hash-map :user-id % :name (get reaction-authors %)))
+                                    reaction-authors-ids)
+        reaction-authors-name (map #(hash-map :name (:name %))
+                                  reaction-authors-you)
+        comments (text/attribution 3 comment-count "comment" comment-authors)
         comment-authors-you (map #(if (= (:user-id receiver) (:user-id %))
                                     (assoc % :name "you")
                                     %)
@@ -136,7 +134,7 @@
         comment-authors-name (map #(hash-map :name (:name %))
                                   comment-authors-you)
         total-authors (vec (set
-                            (concat reaction-authors-you
+                            (concat reaction-authors-name
                                     comment-authors-name)))
         total-authors-sorted (remove #(nil? (:name %))
                                (conj (remove #(= (:name %) "you")
@@ -146,7 +144,7 @@
         reactions (text/attribution 3
                                     (count reaction-data)
                                     "reaction"
-                                    reaction-authors)
+                                    reaction-authors-name)
         total-attribution (interaction-attribution-text 2
                                             (+ (count reaction-data)
                                                comment-count)
