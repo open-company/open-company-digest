@@ -141,12 +141,13 @@
                                              total-authors)
                                      (first (filter #(= (:name %) "you")
                                                     total-authors))))
+        reactions-count (apply + (map :count reaction-data))
         reactions (text/attribution 3
-                                    (count reaction-data)
+                                    reactions-count
                                     "reaction"
                                     reaction-authors-name)
         total-attribution (interaction-attribution-text 2
-                                            (+ (count reaction-data)
+                                            (+ reactions-count
                                                comment-count)
                                             "comments/reactions"
                                             total-authors-sorted)
