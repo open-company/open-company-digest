@@ -21,10 +21,10 @@
 
 (def default-tz "America/New_York")
 
-;; OK, this is an odd one... it's 16m short of 1 day (60*24=1440) in minutes.
+;; OK, this is an odd one... it's 30m short of 1 day (60*24=1440) in minutes.
 ;; This helps us account for timezones that are 24h off UTC, and at the same
-;; time in a 45m increment (I'm looking at you Australia/Eucla)
-(def day-fix 1424)
+;; time in a 30m/45m increment (I'm looking at you Australia/Eucla and Asia/Pyongyang)
+(def day-fix 1410)
 
 ;; ----- RethinkDB metadata -----
 

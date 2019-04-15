@@ -10,7 +10,7 @@
 (def CDT "America/Chicago") ; UTC --
 (def UTC "Europe/London") ; UTC on the nose
 (def UTCplus "Australia/West") ; UTC +
-(def half-hour "Asia/Kabul") ; UTC +1/2
+(def half-hour "Asia/Kabul") ; UTC +4:30
 (def three-quarter "Australia/Eucla") ; UTC +3/4
 
 ;; ----- Utilities -----
