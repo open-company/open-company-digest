@@ -64,10 +64,10 @@
       (let [results (pmap #(digest-for-user? UTC % zone) (range 0 24))
             happened (count (filter true? results))
             not-happend (count (filter false? results))]
-         (when (and (not= 1 happened) (not= 23 not-happend))
+        (when (and (not= 1 happened) (not= 23 not-happend))
           (timbre/error "Failure for TZ:" zone)
           (timbre/merge-config! {:level (keyword :debug)})
           (doall (map #(digest-for-user? UTC % zone) (range 0 24)))
           (timbre/merge-config! {:level (keyword :info)}))
-         happened => 1
-         not-happend => 23))))
+        happened => 1
+        not-happend => 23))))
