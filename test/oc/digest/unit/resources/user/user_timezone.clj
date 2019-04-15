@@ -10,7 +10,7 @@
 (def CDT "America/Chicago") ; UTC --
 (def UTC "Europe/London") ; UTC on the nose
 (def UTCplus "Australia/West") ; UTC +
-(def half-hour "Asia/Kabul") ; UTC +1/2
+(def half-hour "Asia/Kabul") ; UTC +4:30
 (def three-quarter "Australia/Eucla") ; UTC +3/4
 
 ;; ----- Utilities -----
@@ -30,21 +30,15 @@
   (timbre/merge-config! {:level (keyword :info)})
 
   (facts "About EDT (UTC-)"
-    (digest-for-user? EDT 6 EDT) => false ; schedule tick at 6AM EDT
-    (digest-for-user? EDT 7 EDT) => true ; schedule tick at 7AM EDT
-    (digest-for-user? EDT 8 EDT) => false ; schedule tick at 8AM EDT
+    (map #(digest-for-user? EDT % EDT) (range 5 10)) => [false false true false false]
     (digest-for-user? EDT 19 EDT) => false) ; schedule tick at 7PM EDT
 
   (facts "About CDT (UTC--)"
-    (digest-for-user? EDT 7 CDT) => false ; schedule tick at 7AM EDT
-    (digest-for-user? EDT 8 CDT) => true ; schedule tick at 8AM EDT
-    (digest-for-user? EDT 9 CDT) => false ; schedule tick at 9AM EDT
-    (digest-for-user? EDT 20 CDT) => false) ; schedule tick at 8PM EDT
+    (map #(digest-for-user? EDT % CDT) (range 6 11)) => [false false true false false]
+    (digest-for-user? EDT 20 EDT) => false) ; schedule tick at 7PM CDT
 
   (facts "About UTC"
-    (digest-for-user? UTC 6 UTC) => false ; schedule tick at 6AM UTC
-    (digest-for-user? UTC 7 UTC) => true ; schedule tick at 7AM UTC
-    (digest-for-user? UTC 8 UTC) => false ; schedule tick at 8AM UTC
+    (map #(digest-for-user? UTC % UTC) (range 5 10)) => [false false true false false]
     (digest-for-user? UTC 19 UTC) => false) ; schedule tick at 7PM UTC
 
   (facts "About Australia (UTC+)"
