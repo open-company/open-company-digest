@@ -21,6 +21,11 @@
 
 (def default-tz "America/New_York")
 
+;; OK, this is an odd one... it's 16m short of 1 day (60*24=1440) in minutes.
+;; This helps us account for timezones that are 24h off UTC, and at the same
+;; time in a 45m increment (I'm looking at you Australia/Eucla)
+(def day-fix 1424)
+
 ;; ----- RethinkDB metadata -----
 
 (def table-name :users)
@@ -44,8 +49,8 @@
         ;; The delta in minutes between schedule tick time and 7AM in the users TZ
         time-delta (jt/time-between time-for-user digest-time-for-user :minutes)
         ;; +/-24h is same as 0h, we don't care about being a day ahead or behind UTC
-        adjusted-delta (if (or (<= time-delta -1440) (>= time-delta 1440))
-                          (- (Math/abs time-delta) 1440) time-delta) ; Remove the day ahead or behind
+        adjusted-delta (if (or (<= time-delta (* -1 day-fix)) (>= time-delta day-fix))
+                          (- (Math/abs time-delta) day-fix) time-delta) ; Remove the day ahead or behind
         ;; Is it 0 mins from 7AM local time, or it's in less than 59m from now?
         time-for-digest? (and
                             (or (zero? adjusted-delta) (pos? adjusted-delta))
