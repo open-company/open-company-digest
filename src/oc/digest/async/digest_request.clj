@@ -171,13 +171,15 @@
 
 ;; ----- Activity → Digest -----
 
-(defn- post-url [org-slug board-slug uuid id-token]
+(defn- post-url [org-slug board-slug uuid id-token disallow-secure-links]
   (str (s/join "/" [config/ui-server-url org-slug board-slug "post" uuid])
-       "?id=" id-token))
+       (when-not disallow-secure-links
+        (str "?id=" id-token))))
 
 (defn- post [org-slug claims post]
   (let [reactions-data (:reactions post)
         comments (link-for "comments" post)
+        disallow-secure-links (:disallow-secure-links claims)
         token-claims (-> claims
                          (assoc :team-id (first (:teams claims)))
                          (assoc :org-uuid (:org-uuid claims))
@@ -188,7 +190,7 @@
         reactions (or (map #(dissoc % :links) reactions-data) [])]
     {:headline (:headline post)
      :body (:body post)
-     :url (post-url org-slug (:board-slug post) (:uuid post) id-token)
+     :url (post-url org-slug (:board-slug post) (:uuid post) id-token disallow-secure-links)
      :publisher (:publisher post)
      :published-at (:published-at post)
      :comment-count comment-count
@@ -247,9 +249,11 @@
      (assoc :first-name first-name)
      (assoc :last-name last-name)))))
     
-(defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id :as org}
+(defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id
+                  content-visibility :content-visibility :as org}
                  activity claims]
-  (let [trigger {:type :digest
+  (let [fixed-content-visibility (or content-visibility {})
+        trigger {:type :digest
                  :org-slug org-slug
                  :org-name org-name
                  :org-uuid org-uuid
@@ -260,7 +264,10 @@
                                     :logo-width (:logo-width org)
                                     :logo-height (:logo-height org)})
                     trigger)]
-    (assoc with-logo :boards (boards org-slug activity (assoc claims :org-uuid org-uuid)))))
+    (assoc with-logo :boards (boards org-slug activity
+     (-> claims
+      (assoc :org-uuid org-uuid)
+      (assoc :disallow-secure-links (:disallow-secure-links fixed-content-visibility)))))))
 
 (defn send-trigger! [trigger claims medium]
   (schema/validate DigestTrigger trigger) ; sanity check
