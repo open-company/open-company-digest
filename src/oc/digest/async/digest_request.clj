@@ -21,6 +21,7 @@
 
 (def DigestPost
   {:headline (schema/maybe schema/Str)
+   :abstract (schema/maybe schema/Str)
    :url lib-schema/NonBlankStr
    :publisher lib-schema/Author
    :published-at lib-schema/ISO8601
@@ -189,6 +190,7 @@
         comment-authors (or (map #(dissoc % :created-at) (:authors comments)) [])
         reactions (or (map #(dissoc % :links) reactions-data) [])]
     {:headline (:headline post)
+     :abstract (:abstract post)
      :body (:body post)
      :url (post-url org-slug (:board-slug post) (:uuid post) id-token disallow-secure-links)
      :publisher (:publisher post)
