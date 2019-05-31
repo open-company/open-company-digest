@@ -34,7 +34,8 @@
    :must-see (schema/maybe schema/Bool)
    :video-id (schema/maybe lib-schema/NonBlankStr)
    :video-image (schema/maybe schema/Str)
-   :video-duration (schema/maybe schema/Str)})
+   :video-duration (schema/maybe schema/Str)
+   :board-access (schema/maybe schema/Str)})
 
 (def DigestBoard
   {:name lib-schema/NonBlankStr
@@ -206,7 +207,8 @@
      :must-see (:must-see post)
      :video-id (:video-id post)
      :video-image (or (:video-image post) "")
-     :video-duration (or (:video-duration post) "")}))
+     :video-duration (or (:video-duration post) "")
+     :board-access (:board-access post)}))
 
 (defn- board [org-slug claims posts]
   {:name (:board-name (first posts))
