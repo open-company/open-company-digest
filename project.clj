@@ -13,7 +13,7 @@
 
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
-    [org.clojure/clojure "1.10.1-RC1"]
+    [org.clojure/clojure "1.10.1"]
     [org.clojure/tools.cli "0.4.2"] ; commandline parsing https://github.com/clojure/tools.cli
     [http-kit "2.4.0-alpha4"] ; Web client/server http://http-kit.org/
     ;; Web application library https://github.com/ring-clojure/ring
