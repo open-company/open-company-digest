@@ -41,6 +41,8 @@
 ;; ----- URLs -----
 
 (defonce storage-server-url (or (env :storage-server-url) (str "http://localhost:3001")))
+(defonce auth-server-url (or (env :auth-server-url) (str "http://localhost:3003")))
+(defonce change-server-url (or (env :change-server-url) (str "http://localhost:3006")))
 (defonce ui-server-url (or (env :ui-server-url) "http://localhost:3559"))
 
 ;; ----- AWS SQS -----
