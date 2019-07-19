@@ -7,7 +7,6 @@
             [schema.core :as schema]
             [oc.lib.schema :as lib-schema]
             [oc.lib.jwt :as jwt]
-            [oc.lib.text :as text]
             [oc.lib.auth :as auth]
             [oc.lib.change :as change]
             [oc.digest.config :as config]
