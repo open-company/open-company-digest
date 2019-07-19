@@ -8,7 +8,13 @@
             [oc.lib.schema :as lib-schema]
             [oc.lib.jwt :as jwt]
             [oc.lib.text :as text]
-            [oc.digest.config :as config]))
+            [oc.lib.auth :as auth]
+            [oc.lib.change :as change]
+            [oc.digest.config :as config]
+            [clj-time.format :as f]
+            [clj-time.core :as t]))
+
+(def iso-format (f/formatters :date-time))
 
 ;; ----- Schema -----
 (def DigestReaction
@@ -25,10 +31,9 @@
    :url lib-schema/NonBlankStr
    :publisher lib-schema/Author
    :published-at lib-schema/ISO8601
-   :comment-count schema/Int
-   :comment-authors [lib-schema/Author]
+   :comment-count-label (schema/maybe schema/Str)
+   :new-comment-label (schema/maybe schema/Str)
    :reactions [DigestReaction]
-   :interaction-attribution (schema/maybe lib-schema/NonBlankStr)
    :body (schema/maybe schema/Str)
    :uuid (schema/maybe lib-schema/NonBlankStr)
    :must-see (schema/maybe schema/Bool)
@@ -69,6 +74,16 @@
     :id schema/Str
   }}))
 
+;; ----- Seen data ------
+
+(defn get-read-data [claims entry-id]
+  (let [superuser-token (auth/user-token {:user-id (:user-id claims)} config/auth-server-url config/passphrase "Digest")
+        c {:change-server-url config/change-server-url
+           :auth-server-url config/auth-server-url
+           :passphrase config/passphrase
+           :service-name "Digest"}]
+    (change/seen-data-for c superuser-token entry-id)))
+
 ;; ----- Utility Functions -----
 
 (defn log-token [jwtoken]
@@ -80,96 +95,6 @@
 
 (defn link-for [rel {links :links}]
   (some #(if (= (:rel %) rel) % false) links))
-
-(defn interaction-attribution-text
-  "
-  Given the number of distinct authors to mention, the number of items, what to call the
-  item (needs to pluralize with just an 's'), and a sequence of authors of the items
-  to attribute (sequence needs to be distinct'able, and have a `:name` property per author),
-  return a text string that attributes the authors to the items.
-  E.g.
-  (attribution 3 7 'comment' [{:name 'Joe'} {:name 'Joe'} {:name 'Moe'} {:name 'Flo'} {:name 'Flo'} {:name 'Sue'}])
-  '7 comments by Joe, Moe, Flo and others'
-  "
-  [attribution-count item-count item-name authors]
-  (let [distinct-authors (distinct authors)
-        author-names (map :name (take attribution-count distinct-authors))
-        more-authors? (> (count distinct-authors) (count author-names))
-        multiple-authors? (> (count author-names) 1)
-        author-attribution (cond
-                              ;; more distinct authors than we are going to mention individually
-                              more-authors?
-                              (let [other-count (- (count distinct-authors)
-                                                   attribution-count)]
-                                (str (clojure.string/join ", " author-names)
-                                     " and "
-                                     other-count
-                                     " other"
-                                     (when (> other-count 1)
-                                       "s")))
-
-                              ;; more than 1 author so last mention needs an "and", not a comma
-                              multiple-authors?
-                              (str (clojure.string/join ", " (butlast author-names))
-                                                        " and "
-                                                        (last author-names))
-
-                              ;; just 1 author
-                              :else
-                              (first author-names))]
-    (str item-count " " item-name (when (> item-count 1) "s") " by " author-attribution)))
-
-(defn- interaction-attribution [comment-authors comment-count reaction-data receiver]
-  (let [reaction-authors-ids (flatten (map :author-ids reaction-data))
-        reaction-authors (zipmap reaction-authors-ids (flatten (map :authors reaction-data)))
-        reaction-authors-you (map #(if (= (:user-id receiver) %)
-                                       (hash-map :user-id % :name "you")
-                                       (hash-map :user-id % :name (get reaction-authors %)))
-                                    reaction-authors-ids)
-        reaction-authors-name (map #(hash-map :name (:name %))
-                                  reaction-authors-you)
-        comments (text/attribution 3 comment-count "comment" comment-authors)
-        comment-authors-you (map #(if (= (:user-id receiver) (:user-id %))
-                                    (assoc % :name "you")
-                                    %)
-                                 comment-authors)
-        comment-authors-name (map #(hash-map :name (:name %))
-                                  comment-authors-you)
-        total-authors (vec (set
-                            (concat reaction-authors-name
-                                    comment-authors-name)))
-        total-authors-sorted (remove #(nil? (:name %))
-                               (conj (remove #(= (:name %) "you")
-                                             total-authors)
-                                     (first (filter #(= (:name %) "you")
-                                                    total-authors))))
-        reactions-count (apply + (map :count reaction-data))
-        reactions (text/attribution 3
-                                    reactions-count
-                                    "reaction"
-                                    reaction-authors-name)
-        total-attribution (interaction-attribution-text 2
-                                            (+ reactions-count
-                                               comment-count)
-                                            "comments/reactions"
-                                            total-authors-sorted)
-        comment-text (clojure.string/join " "
-                      (take 2 (clojure.string/split comments #" ")))
-        reaction-text (clojure.string/join " "
-                       (take 2 (clojure.string/split reactions #" ")))
-        author-text (clojure.string/join " "
-                      (subvec
-                       (clojure.string/split total-attribution #" ") 2))]
-    (cond 
-      ;; Comments and reactions
-      (and (pos? comment-count) (pos? (or (count reaction-data) 0)))
-      (str comment-text " and " reaction-text " " author-text)
-      ;; Comments only
-      (pos? comment-count)
-      (str comment-text " " author-text)
-      ;; Reactions only
-      :else
-      (str reaction-text " " author-text))))
 
 ;; ----- Activity → Digest -----
 
@@ -188,21 +113,27 @@
                          (assoc :secure-uuid (:secure-uuid post)))
         id-token (jwt/generate-id-token token-claims config/passphrase)
         comment-count (or (:count comments) 0)
-        comment-authors (or (map #(dissoc % :created-at) (:authors comments)) [])
-        reactions (or (map #(dissoc % :links) reactions-data) [])]
+        reactions (or (map #(dissoc % :links) reactions-data) [])
+        read-data (get-read-data claims (:uuid post))
+        read-entry (first (filter #(= (:user-id claims) (:user-id %)) (get-in read-data [:post :read])))
+        read-at-date (when (:read-at read-entry)
+                      (f/parse iso-format (:read-at read-entry)))
+        new-comments (when read-at-date (filterv #(let [parsed-date (f/parse iso-format (:created-at %))]
+                                                    (t/after? parsed-date read-at-date))
+                                           (:comments post)))
+        new-comment-label (when (and read-at-date
+                                     (seq new-comments))
+                             (str (count new-comments) " NEW"))]
     {:headline (:headline post)
      :abstract (:abstract post)
      :body (:body post)
      :url (post-url org-slug (:board-slug post) (:uuid post) id-token disallow-secure-links)
      :publisher (:publisher post)
      :published-at (:published-at post)
-     :comment-count comment-count
-     :comment-authors comment-authors
+     :comment-count-label (when (pos? comment-count)
+                            (str comment-count " comment" (when-not (= comment-count 1) "s")))
+     :new-comment-label new-comment-label
      :reactions reactions
-     :interaction-attribution (when (or (pos? (or comment-count 0))
-                                        (pos? (or (count reactions) 0)))
-                                (interaction-attribution comment-authors comment-count reactions
-                                         {:user-id (:user-id claims)}))
      :uuid (:uuid post)
      :must-see (:must-see post)
      :video-id (:video-id post)
