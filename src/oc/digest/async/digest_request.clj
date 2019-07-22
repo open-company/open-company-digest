@@ -117,9 +117,11 @@
         read-entry (first (filter #(= (:user-id claims) (:user-id %)) (get-in read-data [:post :read])))
         read-at-date (when (:read-at read-entry)
                       (f/parse iso-format (:read-at read-entry)))
-        new-comments (when read-at-date (filterv #(let [parsed-date (f/parse iso-format (:created-at %))]
-                                                    (t/after? parsed-date read-at-date))
-                                           (:comments post)))
+        new-comments (if read-at-date
+                       (filterv #(let [parsed-date (f/parse iso-format (:created-at %))]
+                                   (t/after? parsed-date read-at-date))
+                        (:comments post))
+                       (:comments post))
         new-comment-label (when (and read-at-date
                                      (seq new-comments))
                              (str (count new-comments) " NEW"))]
