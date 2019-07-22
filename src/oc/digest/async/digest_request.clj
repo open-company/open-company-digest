@@ -122,9 +122,8 @@
                                    (t/after? parsed-date read-at-date))
                         (:comments post))
                        (:comments post))
-        new-comment-label (when (and read-at-date
-                                     (seq new-comments))
-                             (str (count new-comments) " NEW"))]
+        new-comment-label (when (seq new-comments)
+                            (str (count new-comments) " NEW"))]
     {:headline (:headline post)
      :abstract (:abstract post)
      :body (:body post)
