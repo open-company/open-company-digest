@@ -39,7 +39,8 @@
    :video-id (schema/maybe lib-schema/NonBlankStr)
    :video-image (schema/maybe schema/Str)
    :video-duration (schema/maybe schema/Str)
-   :board-access (schema/maybe schema/Str)})
+   :board-access (schema/maybe schema/Str)
+   :follow-up (schema/maybe schema/Bool)})
 
 (def DigestBoard
   {:name lib-schema/NonBlankStr
@@ -123,7 +124,8 @@
                         (:comments post))
                        (:comments post))
         new-comment-label (when (seq new-comments)
-                            (str (count new-comments) " NEW"))]
+                            (str (count new-comments) " NEW"))
+        user-follow-up (first (filter #(= (:user-id claims) (-> % :assignee :user-id)) (:follow-ups post)))]
     {:headline (:headline post)
      :abstract (:abstract post)
      :body (:body post)
@@ -139,7 +141,9 @@
      :video-id (:video-id post)
      :video-image (or (:video-image post) "")
      :video-duration (or (:video-duration post) "")
-     :board-access (:board-access post)}))
+     :board-access (:board-access post)
+     :follow-up (and user-follow-up
+                     (not (:completed? user-follow-up)))}))
 
 (defn- board [org-slug claims posts]
   {:name (:board-name (first posts))
