@@ -79,6 +79,10 @@
     "Database pool: " c/db-pool-size "\n"
     "AWS SQS email queue: " c/aws-sqs-email-queue "\n"
     "AWS SQS bot queue: " c/aws-sqs-bot-queue "\n"
+    "Auth service URL: " c/auth-server-url "\n"
+    "Storage service URL: " c/storage-server-url "\n"
+    "Change service URL: " c/change-server-url "\n"
+    "Web URL: " c/ui-server-url "\n"
     "Hot-reload: " c/hot-reload "\n"
     "Sentry: " c/dsn "\n\n"
     (when c/intro? "Ready to serve...\n"))))
