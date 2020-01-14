@@ -33,11 +33,14 @@
   ([org activity-url activity-accept jwtoken medium skip-send?]
   (timbre/debug "Retrieving:" (str c/storage-server-url activity-url) "for:" (d-r/log-token jwtoken))
   (let [start (f/unparse iso-format (t/minus (t/now) (t/days 1)))
+        activity-url-with-params (str activity-url
+                                  (if (> (.indexOf activity-url "?") -1) "&" "?")
+                                  "start=" start
+                                  "&direction=after")
         ;; Retrieve activity data for the digest
-        response (httpc/get (str c/storage-server-url activity-url) {:query-params {:start start :direction "after"}
-                                                                     :headers {
-                                                                       :authorization (str "Bearer " jwtoken)
-                                                                       :accept activity-accept}})]
+        response (httpc/get (str c/storage-server-url activity-url-with-params) {:headers {
+                                                                                  :authorization (str "Bearer " jwtoken)
+                                                                                  :accept activity-accept}})]
     (if (success? response)
       (let [activity (-> response :body json/parse-string keywordize-keys :collection :items)]
         (cond
