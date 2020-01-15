@@ -15,14 +15,14 @@
     ;; Lisp on the JVM http://clojure.org/documentation
     [org.clojure/clojure "1.10.1"]
     [org.clojure/tools.cli "0.4.2"] ; commandline parsing https://github.com/clojure/tools.cli
-    [http-kit "2.4.0-alpha4"] ; Web client/server http://http-kit.org/
+    [http-kit "2.4.0-alpha5"] ; Web client/server http://http-kit.org/
     ;; Web application library https://github.com/ring-clojure/ring
-    [ring/ring-devel "1.7.1"]
+    [ring/ring-devel "1.8.0"]
     ;; Web application library https://github.com/ring-clojure/ring
     ;; NB: clj-time pulled in by oc.lib
     ;; NB: joda-time pulled in by oc.lib via clj-time
     ;; NB: commons-codec pulled in by oc.lib
-    [ring/ring-core "1.7.1" :exclusions [clj-time joda-time commons-codec]]
+    [ring/ring-core "1.8.0" :exclusions [clj-time joda-time commons-codec]]
     ;; Ring logging https://github.com/nberger/ring-logger-timbre
     ;; NB: com.taoensso/encore pulled in by oc.lib
     ;; NB: com.taoensso/timbre pulled in by oc.lib
@@ -38,7 +38,7 @@
     [clojure.java-time "0.3.2"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.17.14"]
+    [open-company/lib "0.17.25.1"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
     ;; if-let - More than one binding for if/when macros https://github.com/LockedOn/if-let
@@ -76,11 +76,11 @@
       ]
       :plugins [
         ;; Example-based testing https://github.com/marick/lein-midje
-        [lein-midje "3.2.1"]
+        [lein-midje "3.2.2"]
         ;; Linter https://github.com/jonase/eastwood
-        [jonase/eastwood "0.3.6"]
+        [jonase/eastwood "0.3.7"]
         ;; Static code search for non-idiomatic code https://github.com/jonase/kibit
-        [lein-kibit "0.1.7" :exclusions [org.clojure/clojure]]
+        [lein-kibit "0.1.8" :exclusions [org.clojure/clojure]]
       ]
     }
 
