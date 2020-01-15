@@ -33,15 +33,16 @@
   ([org entries-url activity-accept jwtoken medium skip-send?]
   (timbre/debug "Retrieving:" (str c/storage-server-url entries-url) "for:" (d-r/log-token jwtoken))
   (let [start (f/unparse iso-format (t/minus (t/now) (t/days 1)))
-        ;; Set the params in the url, don't user :query-params because it's ingored if url catains other parameters
+        ;; Set the params in the URL, don't use :query-params because it's ingored if
+        ;; the URL contains other parameters
         entries-url-with-params (str entries-url
                                  (if (> (.indexOf entries-url "?") -1) "&" "?")
                                  "start=" start
                                  "&direction=after")
         ;; Retrieve activity data for the digest
         response (httpc/get (str c/storage-server-url entries-url-with-params) {:headers {
-                                                                                  :authorization (str "Bearer " jwtoken)
-                                                                                  :accept activity-accept}})]
+                                                                                :authorization (str "Bearer " jwtoken)
+                                                                                :accept activity-accept}})]
     (if (success? response)
       (let [activity (-> response :body json/parse-string keywordize-keys :collection :items)]
         (cond
