@@ -40,10 +40,12 @@
 
 ;; ----- URLs -----
 
-(defonce storage-server-url (or (env :storage-server-url) (str "http://localhost:3001")))
-(defonce auth-server-url (or (env :auth-server-url) (str "http://localhost:3003")))
-(defonce change-server-url (or (env :change-server-url) (str "http://localhost:3006")))
-(defonce ui-server-url (or (env :ui-server-url) "http://localhost:3559"))
+(defonce host (or (env :local-dev-host) "localhost"))
+
+(defonce storage-server-url (or (env :storage-server-url) (str "http://" host ":3001")))
+(defonce auth-server-url (or (env :auth-server-url) (str "http://" host ":3003")))
+(defonce change-server-url (or (env :change-server-url) (str "http://" host ":3006")))
+(defonce ui-server-url (or (env :ui-server-url) (str "http://" host ":3559")))
 
 ;; ----- AWS SQS -----
 
@@ -55,5 +57,5 @@
 
 ;; ----- JWT -----
 
-(defonce cookie-prefix (or (env :cookie-prefix) "localhost-"))
+(defonce cookie-prefix (or (env :cookie-prefix) (str host "-")))
 (defonce passphrase (env :open-company-auth-passphrase))
