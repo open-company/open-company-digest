@@ -4,15 +4,13 @@
     [clojure.walk :refer (keywordize-keys)]
     [if-let.core :refer (if-let*)]
     [clj-time.core :as t]
-    [clj-time.format :as f]
+    [clj-time.coerce :as c]
     [clj-http.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
     [oc.lib.jwt :as jwt]
     [oc.digest.async.digest-request :as d-r]
-    [oc.digest.config :as c]))
-
-(def iso-format (f/formatters :date-time)) ; ISO 8601
+    [oc.digest.config :as config]))
 
 ;; ----- Utility Functions -----
 
@@ -31,18 +29,18 @@
   
   ;; Need to get an org's activity from its activity link
   ([org entries-url activity-accept jwtoken medium skip-send?]
-  (timbre/debug "Retrieving:" (str c/storage-server-url entries-url) "for:" (d-r/log-token jwtoken))
-  (let [start (f/unparse iso-format (t/minus (t/now) (t/days 1)))
+  (timbre/debug "Retrieving:" (str config/storage-server-url entries-url) "for:" (d-r/log-token jwtoken))
+  (let [start (* (c/to-long (t/minus (t/now) (t/days 1))) 1000)
         ;; Set the params in the URL, don't use :query-params because it's ingored if
         ;; the URL contains other parameters
         entries-url-with-params (str entries-url
                                  (if (> (.indexOf entries-url "?") -1) "&" "?")
                                  "start=" start
-                                 "&direction=after")
+                                 "&direction=after&following=true")
         ;; Retrieve activity data for the digest
-        response (httpc/get (str c/storage-server-url entries-url-with-params) {:headers {
-                                                                                :authorization (str "Bearer " jwtoken)
-                                                                                :accept activity-accept}})]
+        response (httpc/get (str config/storage-server-url entries-url-with-params) {:headers {
+                                                                                     :authorization (str "Bearer " jwtoken)
+                                                                                     :accept activity-accept}})]
     (if (success? response)
       (let [activity (-> response :body json/parse-string keywordize-keys :collection :items)]
         (cond
@@ -63,12 +61,12 @@
   ;; Need to get an org from its item link
   ([org jwtoken medium skip-send?]
   (if-let* [org-link (d-r/link-for "item" org)
-            org-url (str c/storage-server-url (:href org-link))]
+            org-url (str config/storage-server-url (:href org-link))]
     (do
       (timbre/debug "Retrieving:" org-url "for:" (d-r/log-token jwtoken))
       (let [response (httpc/get org-url {:headers {
-                                            :authorization (str "Bearer " jwtoken)
-                                            :accept (:accept org-link)}})] 
+                                          :authorization (str "Bearer " jwtoken)
+                                          :accept (:accept org-link)}})]
         (if (success? response)
           (let [org (-> response :body json/parse-string keywordize-keys)
                 activity-link (d-r/link-for "entries" org)]
@@ -79,14 +77,14 @@
 
   ;; Need to get list of orgs from /
   ([jwtoken medium skip-send?]
-  (timbre/debug "Retrieving:" c/storage-server-url "for:" (d-r/log-token jwtoken))
-  (let [response (httpc/get c/storage-server-url {:headers {
+  (timbre/debug "Retrieving:" config/storage-server-url "for:" (d-r/log-token jwtoken))
+  (let [response (httpc/get config/storage-server-url {:headers {
                                         :authorization (str "Bearer " jwtoken)
-                                        :accept "application/vnd.collection+vnd.open-company.org+json;version=1"}})] 
+                                        :accept "application/vnd.collection+vnd.open-company.org+json;version=1"}})]
     (if (success? response)
       (let [orgs (-> response :body json/parse-string keywordize-keys :collection :items)]
         ;; TBD serial for now, think through if we want this parallel
         (doseq [org orgs] (digest-request-for org jwtoken medium skip-send?))
         true)
-      (timbre/warn "Error requesting:" c/storage-server-url "for:" (d-r/log-token jwtoken)
+      (timbre/warn "Error requesting:" config/storage-server-url "for:" (d-r/log-token jwtoken)
         "status:" (:status response) "body:" (:body response))))))
