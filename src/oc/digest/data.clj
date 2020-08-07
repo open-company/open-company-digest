@@ -4,11 +4,11 @@
     [clojure.walk :refer (keywordize-keys)]
     [if-let.core :refer (if-let*)]
     [clj-time.core :as t]
-    [clj-time.coerce :as c]
     [clj-http.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
     [oc.lib.jwt :as jwt]
+    [oc.lib.time :as oc-time]
     [oc.digest.async.digest-request :as d-r]
     [oc.digest.config :as config]))
 
@@ -30,13 +30,13 @@
   ;; Need to get an org's activity from its activity link
   ([org entries-url activity-accept jwtoken medium skip-send?]
   (timbre/debug "Retrieving:" (str config/storage-server-url entries-url) "for:" (d-r/log-token jwtoken))
-  (let [start (* (c/to-long (t/minus (t/now) (t/days 1))) 1000)
+  (let [start (oc-time/millis (t/minus (t/now) (t/days 1)))
         ;; Set the params in the URL, don't use :query-params because it's ingored if
         ;; the URL contains other parameters
         entries-url-with-params (str entries-url
                                  (if (> (.indexOf entries-url "?") -1) "&" "?")
                                  "start=" start
-                                 "&direction=after&following=true")
+                                 "&direction=after")
         ;; Retrieve activity data for the digest
         response (httpc/get (str config/storage-server-url entries-url-with-params) {:headers {
                                                                                      :authorization (str "Bearer " jwtoken)
@@ -69,7 +69,7 @@
                                           :accept (:accept org-link)}})]
         (if (success? response)
           (let [org (-> response :body json/parse-string keywordize-keys)
-                activity-link (d-r/link-for "entries" org)]
+                activity-link (d-r/link-for "following" org)]
             (digest-request-for org (:href activity-link) (:accept activity-link) jwtoken medium skip-send?))
           (timbre/warn "Error requesting:" org-link "for:" (d-r/log-token jwtoken)
                        "status:" (:status response) "body:" (:body response)))))

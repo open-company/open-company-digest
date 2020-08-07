@@ -10,9 +10,9 @@
             [oc.digest.config :as config]))
 
 (def user-props [:user-id :teams :email :first-name :last-name :avatar-url
-                 :digest-medium :status :slack-users :timezone])
+                 :digest-medium :status :slack-users :timezone :digest-last-at :digest-delivery])
 
-(def not-for-jwt [:digest-medium :status])
+(def not-for-jwt [:digest-medium :status :digest-last-at :digest-delivery])
 
 (def for-jwt {:auth-source :digest
               :refresh-url "N/A"})
