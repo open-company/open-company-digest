@@ -23,6 +23,10 @@
 
 ;; ----- Digest Request Generation -----
 
+(defn- link-replace-href [link replacements]
+  (update link :href
+   #(reduce (fn [href [k v]] (s/replace href v (get replacements k))) % (:replace link))))
+
 (defn digest-request-for
   "Recursive function that, given a JWT token, makes a sequence of HTTP requests to get all posts data for
   each org the user is a team member of, and creates a digest request for each."
@@ -30,17 +34,9 @@
   ;; Need to get an org's activity from its activity link
   ([org entries-url activity-accept jwtoken medium skip-send?]
   (timbre/debug "Retrieving:" (str config/storage-server-url entries-url) "for:" (d-r/log-token jwtoken))
-  (let [start (oc-time/millis (t/minus (t/now) (t/days 1)))
-        ;; Set the params in the URL, don't use :query-params because it's ingored if
-        ;; the URL contains other parameters
-        entries-url-with-params (str entries-url
-                                 (if (> (.indexOf entries-url "?") -1) "&" "?")
-                                 "start=" start
-                                 "&direction=after")
-        ;; Retrieve activity data for the digest
-        response (httpc/get (str config/storage-server-url entries-url-with-params) {:headers {
-                                                                                     :authorization (str "Bearer " jwtoken)
-                                                                                     :accept activity-accept}})]
+  (let [;; Retrieve activity data for the digest
+        response (httpc/get (str config/storage-server-url entry-url) {:headers {:authorization (str "Bearer " jwtoken)
+                                                                                 :accept activity-accept}})]
     (if (success? response)
       (let [activity (-> response :body json/parse-string keywordize-keys :collection :items)]
         (cond
@@ -55,7 +51,7 @@
                   (d-r/send-trigger! (d-r/->trigger org activity claims) claims medium))))
 
       ;; Failed to get activity for the digest
-      (timbre/warn "Error requesting:" entries-url-with-params "for:" (d-r/log-token jwtoken) "start:" start
+      (timbre/warn "Error requesting:" entry-url "for:" (d-r/log-token jwtoken)
                    "status:" (:status response) "body:" (:body response)))))
 
   ;; Need to get an org from its item link
@@ -69,8 +65,9 @@
                                           :accept (:accept org-link)}})]
         (if (success? response)
           (let [org (-> response :body json/parse-string keywordize-keys)
-                activity-link (d-r/link-for "following" org)]
-            (digest-request-for org (:href activity-link) (:accept activity-link) jwtoken medium skip-send?))
+                digest-partial-link (d-r/link-for "digest" org)
+                digest-link (link-replace-href digest-partial-link {:start (oc-time/millis (r/minus (r/now) (/days 1)))})]
+            (digest-request-for org (:href digest-link) (:accept digest-link) jwtoken medium skip-send?))
           (timbre/warn "Error requesting:" org-link "for:" (d-r/log-token jwtoken)
                        "status:" (:status response) "body:" (:body response)))))
     (timbre/error "No org link for org:" org)))
