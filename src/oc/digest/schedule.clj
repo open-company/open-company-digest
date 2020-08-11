@@ -15,6 +15,9 @@
             [tick.clock :as clock]
             [tick.schedule :as schedule]
             [oc.lib.db.pool :as pool]
+            [oc.lib.time :as oc-time]
+            [clj-time.core :as t]
+            [clj-time.format :as f]
             [oc.digest.resources.user :as user-res]
             [oc.digest.data :as data])
   (:gen-class))
@@ -28,9 +31,11 @@
 ;; ----- Digest Request Generation -----
 
 (defn- digest-for [user skip-send?]
-  (let [medium (or (keyword (:digest-medium user)) :email)]
+  (let [medium (or (keyword (:digest-medium user)) :email)
+        user-last-digest (or (:digest-last-at user) (:created-at user) (data/default-start))
+        start (f/parse oc-time/timestamp-format user-last-digest)]
     (try
-      (data/digest-request-for (:jwtoken user) medium skip-send?)
+      (data/digest-request-for (:jwtoken user) {:medium medium :start (oc-time/millis start)} skip-send?)
       (catch Exception e
         (timbre/warn "Digest failed for user:" user)
         (timbre/error e)))))

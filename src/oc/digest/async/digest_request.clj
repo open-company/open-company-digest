@@ -9,6 +9,7 @@
             [oc.lib.jwt :as jwt]
             [oc.lib.auth :as auth]
             [oc.lib.change :as change]
+            [oc.lib.hateoas :as hateoas]
             [oc.digest.config :as config]
             [clj-time.format :as f]
             [clj-time.core :as t]))
@@ -93,9 +94,6 @@
 (defn log-claims [claims]
   (str "user-id " (:user-id claims) " email " (:email claims)))
 
-(defn link-for [rel {links :links}]
-  (some #(if (= (:rel %) rel) % false) links))
-
 ;; ----- Activity → Digest -----
 
 (defn- post-url [org-slug board-slug uuid id-token disallow-secure-links]
@@ -105,7 +103,7 @@
 
 (defn- post [org-slug claims post]
   (let [reactions-data (:reactions post)
-        comments (link-for "comments" post)
+        comments (hateoas/link-for (:links post) "comments")
         disallow-secure-links (:disallow-secure-links claims)
         token-claims (-> claims
                          (assoc :team-id (first (:teams claims)))

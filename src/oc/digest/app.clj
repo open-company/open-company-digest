@@ -17,6 +17,8 @@
     [oc.lib.sentry-appender :as sa]
     [oc.lib.jwt :as jwt]
     [oc.lib.api.common :as api-common]
+    [oc.lib.time :as oc-time]
+    [clojure.string :as string]
     [oc.digest.components :as components]
     [oc.digest.data :as data]
     [oc.digest.config :as c]))
@@ -40,24 +42,31 @@
 
 (defun- test-digest
   
-  ([cookies :guard map? medium]
-    (if-let* [jwtoken (-> cookies (get cookie-name) :value)
-              _valid? (jwt/valid? jwtoken c/passphrase)]
-      (test-digest jwtoken medium)
-      {:body "An unexpired login with a valid JWT cookie required for test digest request.\n
-              Please refresh your login with the Web UI before making this request." :status 401}))
+  ([request :guard map? medium]
+    (let [{:keys [cookies query-params]} request
+          start-param (get query-params "start")
+          start* (when-not (string/blank? start-param)
+                   (try
+                     (Long. start-param)
+                     (catch java.lang.NumberFormatException e false)))
+          start (or start* (data/default-start))]
+      (if-let* [jwtoken (-> cookies (get cookie-name) :value)
+                _valid? (jwt/valid? jwtoken c/passphrase)]
+        (test-digest jwtoken medium start)
+        {:body "An unexpired login with a valid JWT cookie required for test digest request.\n
+                Please refresh your login with the Web UI before making this request." :status 401})))
 
-  ([jwtoken :guard string? _medium :guard #(= % "email")]
-  (if-let [digest-request (data/digest-request-for jwtoken :email false)]
+  ([jwtoken :guard string? _medium :guard #(= % "email") start :guard number?]
+  (if-let [digest-request (data/digest-request-for jwtoken {:medium :email :start start} false)]
     {:body (str "Email digest test initiated.") :status 200}
     {:body "Failed to initiate an email digest test." :status 500}))
 
-  ([jwtoken :guard string? _medium :guard #(= % "slack")]
-  (if-let [digest-request (data/digest-request-for jwtoken :slack false)]
+  ([jwtoken :guard string? _medium :guard #(= % "slack") start :guard number?]
+  (if-let [digest-request (data/digest-request-for jwtoken {:medium :slack :start start} false)]
     {:body (str "Slack digest test initiated.") :status 200}
     {:body "Failed to initiate a Slack digest test." :status 500}))
 
-  ([_jwtoken _medium]
+  ([_jwtoken _medium _start]
   {:body "Only 'email' or 'Slack' digest testing is supported at this time." :status 501}))
 
 ;; ----- Request Routing -----
@@ -68,7 +77,7 @@
     (GET "/---error-test---" [] (/ 1 0))
     (GET "/---500-test---" [] {:body "Testing bad things." :status 500})
     (GET "/_/:medium/run" [medium :as request]
-      (test-digest (:cookies request) medium))))
+      (test-digest request medium))))
 
 ;; ----- System Startup -----
 
