@@ -4,6 +4,7 @@
     [clojure.walk :refer (keywordize-keys)]
     [if-let.core :refer (if-let*)]
     [clj-time.core :as t]
+    [clj-time.coerce :as c]
     [clj-http.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
@@ -19,8 +20,8 @@
   (let [status (:status response)]
     (and (>= status 200) (< status 300))))
 
-(defn- log-activity [activity]
-  (str "digest of " (count activity) " posts."))
+(defn- log-response [response]
+  (str "digest of " (count (:following response)) " followed posts, " (count (:replies response)) " replies posts and " (count (:new-boards response)) " new boards."))
 
 ;; ----- Default start time -----
 
@@ -34,24 +35,27 @@
   each org the user is a team member of, and creates a digest request for each."
   
   ;; Need to get an org's activity from its activity link
-  ([org digest-link jwtoken {:keys [medium]} skip-send?]
+  ([org digest-link jwtoken {:keys [medium start]} skip-send?]
   (timbre/debug "Retrieving:" (str config/storage-server-url (:href digest-link)) "for:" (d-r/log-token jwtoken))
   (let [;; Retrieve activity data for the digest
         response (httpc/get (str config/storage-server-url (:href digest-link)) {:headers {:authorization (str "Bearer " jwtoken)
                                                                                  :accept (:accept digest-link)}})]
     (timbre/debug "Loading digest data:" (:href digest-link))
     (if (success? response)
-      (let [activity (-> response :body json/parse-string keywordize-keys :collection :items)]
+      (let [{:keys [following replies new-boards] :as result} (-> response :body json/parse-string keywordize-keys :collection)]
         (cond
           
-          (empty? activity) (timbre/debug "Skipping digest request (no activity) for:" (d-r/log-token jwtoken))
+          (and (empty? following)
+               (zero? (:entry-count replies))
+               (empty? new-boards))
+          (timbre/debug "Skipping digest request (no updates, no replies, no new boards) for:" (d-r/log-token jwtoken))
           
           skip-send? (timbre/info "Skipping digest request (dry run) for:" (d-r/log-token jwtoken)
-                        "with:" (log-activity activity))
+                        "with:" (log-response response))
           
           ;; Trigger the digest request for the appropriate medium
-          :else (let [claims (:claims (jwt/decode jwtoken))]
-                  (d-r/send-trigger! (d-r/->trigger org activity claims) claims medium))))
+          :else (let [claims (-> jwtoken jwt/decode :claims (assoc :digest-last-at (oc-time/to-iso (c/from-long start))))]
+                  (d-r/send-trigger! (d-r/->trigger org result claims) claims medium))))
 
       ;; Failed to get activity for the digest
       (timbre/warn "Error requesting:" (:href digest-link) "for:" (d-r/log-token jwtoken)

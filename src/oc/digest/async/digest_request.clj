@@ -8,8 +8,10 @@
             [oc.lib.schema :as lib-schema]
             [oc.lib.jwt :as jwt]
             [oc.lib.auth :as auth]
+            [oc.lib.user :as lib-user]
             [oc.lib.change :as change]
             [oc.lib.hateoas :as hateoas]
+            [oc.lib.text :as oc-text]
             [oc.digest.config :as config]
             [clj-time.format :as f]
             [clj-time.core :as t]))
@@ -17,35 +19,51 @@
 (def iso-format (f/formatters :date-time))
 
 ;; ----- Schema -----
-(def DigestReaction
-  {:reaction schema/Str
-   :count schema/Int
-   :authors [schema/Str]
-   :author-ids [schema/Str]
-   :reacted schema/Bool})
-
-
 (def DigestPost
-  {:headline (schema/maybe schema/Str)
-   :abstract (schema/maybe schema/Str)
+  {:uuid lib-schema/NonBlankStr
+   :headline (schema/maybe schema/Str)
    :url lib-schema/NonBlankStr
    :publisher lib-schema/Author
    :published-at lib-schema/ISO8601
    :comment-count-label (schema/maybe schema/Str)
    :new-comment-label (schema/maybe schema/Str)
-   :reactions [DigestReaction]
-   :body (schema/maybe schema/Str)
-   :uuid (schema/maybe lib-schema/NonBlankStr)
-   :must-see (schema/maybe schema/Bool)
-   :video-id (schema/maybe lib-schema/NonBlankStr)
-   :video-image (schema/maybe schema/Str)
-   :video-duration (schema/maybe schema/Str)
-   :board-access (schema/maybe schema/Str)
-   :follow-up (schema/maybe schema/Bool)})
+   (schema/optional-key :body) (schema/maybe schema/Str)
+   :board-slug lib-schema/NonBlankStr
+   :board-name lib-schema/NonBlankStr
+   :board-uuid lib-schema/UniqueID})
 
 (def DigestBoard
-  {:name lib-schema/NonBlankStr
-   :posts [DigestPost]})
+  {:uuid lib-schema/NonBlankStr
+   :name lib-schema/NonBlankStr
+   :description (schema/maybe schema/Str)
+   :slug lib-schema/NonBlankStr
+   :author lib-schema/Author
+   :created-at lib-schema/ISO8601
+   :url lib-schema/NonBlankStr
+   :access lib-schema/NonBlankStr})
+
+(def DigestReplies
+  {:url lib-schema/NonBlankStr
+   :comment-count schema/Int
+   :comment-authors [lib-schema/Author]
+   :entry-count schema/Int
+   :replies-label lib-schema/NonBlankStr})
+
+(def UnfollowingSummary
+  {:url lib-schema/NonBlankStr
+   :board-count schema/Int
+   :entry-count schema/Int
+   :entry-author-count schema/Int
+   :unfollowing-label (schema/maybe schema/Str)})
+
+(def DigestNewBoards
+  {:url lib-schema/NonBlankStr
+   :new-boards-list [DigestBoard]
+   :new-boards-label schema/Any})
+
+(def DigestFollowingList
+  {:url lib-schema/NonBlankStr
+   :following-list (schema/maybe [DigestPost])})
 
 (def DigestTrigger
   {:type (schema/enum :digest)
@@ -55,11 +73,17 @@
    :team-id lib-schema/UniqueID
    (schema/optional-key :first-name) (schema/maybe schema/Str)
    (schema/optional-key :last-name) (schema/maybe schema/Str)
+   (schema/optional-key :name) (schema/maybe schema/Str)
+   (schema/optional-key :short-name) (schema/maybe schema/Str)
+   (schema/optional-key :avatar-url) (schema/maybe schema/Str)
    (schema/optional-key :user-id) (schema/maybe schema/Str)
    (schema/optional-key :logo-url) (schema/maybe schema/Str)
    (schema/optional-key :logo-width) schema/Int
    (schema/optional-key :logo-height) schema/Int
-   :boards [DigestBoard]})
+   :following DigestFollowingList
+   :replies DigestReplies
+   :unfollowing UnfollowingSummary
+   :new-boards DigestNewBoards})
 
 (def EmailTrigger (merge DigestTrigger {
   :email lib-schema/EmailAddress}))
@@ -94,63 +118,66 @@
 (defn log-claims [claims]
   (str "user-id " (:user-id claims) " email " (:email claims)))
 
-;; ----- Activity → Digest -----
+;; ----- Response → Digest -----
+
+;;  -- Urls --
+
+(defn- section-url [org-slug slug]
+  (str (s/join "/" [config/ui-server-url org-slug slug])))
+
+(defn- board-url [org-slug board-slug]
+  (section-url org-slug board-url))
 
 (defn- post-url [org-slug board-slug uuid id-token disallow-secure-links]
-  (str (s/join "/" [config/ui-server-url org-slug board-slug "post" uuid])
+  (str (s/join "/" [(board-url org-slug board-slug) "post" uuid])
        (when-not disallow-secure-links
         (str "?id=" id-token))))
 
-(defn- post [org-slug claims post]
-  (let [reactions-data (:reactions post)
-        comments (hateoas/link-for (:links post) "comments")
+;;  -- Posts --
+
+(defn- post [org-slug claims post-data]
+  (let [comments (hateoas/link-for (:links post-data) "comments")
         disallow-secure-links (:disallow-secure-links claims)
         token-claims (-> claims
                          (assoc :team-id (first (:teams claims)))
                          (assoc :org-uuid (:org-uuid claims))
-                         (assoc :secure-uuid (:secure-uuid post)))
+                         (assoc :secure-uuid (:secure-uuid post-data)))
         id-token (jwt/generate-id-token token-claims config/passphrase)
         comment-count (or (:count comments) 0)
-        reactions (or (map #(dissoc % :links) reactions-data) [])
-        read-data (get-read-data claims (:uuid post))
-        read-entry (first (filter #(= (:user-id claims) (:user-id %)) (get-in read-data [:post :read])))
-        read-at-date (when (:read-at read-entry)
-                      (f/parse iso-format (:read-at read-entry)))
-        new-comments (if read-at-date
-                       (filterv #(let [parsed-date (f/parse iso-format (:created-at %))]
-                                   (t/after? parsed-date read-at-date))
-                        (:comments post))
-                       (:comments post))
+        new-comments (filterv #(pos? (compare (:created-at %) (:digest-last-at claims)))
+                        (:comments post-data))
         new-comment-label (when (seq new-comments)
-                            (str (count new-comments) " NEW"))
-        user-follow-up (first (filter #(= (:user-id claims) (-> % :assignee :user-id)) (:follow-ups post)))]
-    {:headline (:headline post)
-     :abstract (:abstract post)
-     :body (:body post)
-     :url (post-url org-slug (:board-slug post) (:uuid post) id-token disallow-secure-links)
-     :publisher (:publisher post)
-     :published-at (:published-at post)
+                            (str (count new-comments) " NEW"))]
+    {:headline (:headline post-data)
+     ; :body (:body post-data)
+     :url (post-url org-slug (:board-slug post-data) (:uuid post-data) id-token disallow-secure-links)
+     :publisher (:publisher post-data)
+     :published-at (:published-at post-data)
      :comment-count-label (when (pos? comment-count)
                             (str comment-count " comment" (when-not (= comment-count 1) "s")))
      :new-comment-label new-comment-label
-     :reactions reactions
-     :uuid (:uuid post)
-     :must-see (:must-see post)
-     :video-id (:video-id post)
-     :video-image (or (:video-image post) "")
-     :video-duration (or (:video-duration post) "")
-     :board-access (:board-access post)
-     :follow-up (and user-follow-up
-                     (not (:completed? user-follow-up)))}))
+     :uuid (:uuid post-data)
+     :board-name (:board-name post-data)
+     :board-slug (:board-slug post-data)
+     :board-uuid (:board-uuid post-data)}))
 
-(defn- board [org-slug claims posts]
-  {:name (:board-name (first posts))
-   :posts (map #(post org-slug claims %) (reverse (sort-by :published-at posts)))})
+(defn- posts-list [org-slug posts claims]
+  (map #(post org-slug claims %) posts))
 
-(defn- boards [org-slug activity claims]
-  (let [by-board (group-by :board-name activity)
-        board-names (sort (keys by-board))]
-    (map #(board org-slug claims (get by-board %)) board-names)))
+;;  -- Boards --
+
+(defn- board-url [org-slug board-slug]
+  (str (s/join "/" [config/ui-server-url org-slug board-slug])))
+
+(defn- board [org-slug board]
+  (-> board
+   (select-keys [:name :slug :access :uuid :description :author :created-at])
+   (assoc :url (board-url org-slug (:slug board)))))
+
+(defn- boards-list [org-slug new-boards claims]
+  {:new-boards-label (oc-text/new-boards-summary-node new-boards (partial board-url org-slug))
+   :new-boards-list (map (partial board org-slug) new-boards)
+   :url (section-url org-slug "topics")})
 
 ;; ----- Digest Request Trigger -----
 
@@ -161,6 +188,8 @@
   (let [team-id (:team-id trigger)
         first-name (:first-name claims)
         last-name (:last-name claims)
+        name (lib-user/name-for claims)
+        short-name (lib-user/short-name-for claims)
         user-id (:user-id claims)
         bots (:slack-bots claims)
         users (:slack-users claims)
@@ -174,37 +203,50 @@
       (assoc :bot (dissoc bot :slack-org-id))
       (assoc :first-name first-name)
       (assoc :last-name last-name)
+      (assoc :name name)
+      (assoc :short-name short-name)
+      (assoc :avatar-url (:avatar-url claims))
       (assoc :user-id user-id))))
 
   ;; Email
   ([trigger claims :email]
   (let [email (:email claims)
         first-name (:first-name claims)
-        last-name (:last-name claims)]
+        last-name (:last-name claims)
+        name (lib-user/name-for claims)
+        short-name (lib-user/short-name-for claims)]
     (-> trigger
      (assoc :email email)
      (assoc :first-name first-name)
-     (assoc :last-name last-name)))))
+     (assoc :last-name last-name)
+     (assoc :name name)
+     (assoc :short-name short-name)
+     (assoc :avatar-url (:avatar-url claims))))))
     
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id
                   content-visibility :content-visibility :as org}
-                 activity claims]
+                 {:keys [following replies unfollowing new-boards]}
+                 claims]
   (let [fixed-content-visibility (or content-visibility {})
-        trigger {:type :digest
-                 :org-slug org-slug
-                 :org-name org-name
-                 :org-uuid org-uuid
-                 :user-id (:user-id claims)
-                 :team-id team-id}
-        with-logo (if logo-url
-                    (merge trigger {:logo-url logo-url
-                                    :logo-width (:logo-width org)
-                                    :logo-height (:logo-height org)})
-                    trigger)]
-    (assoc with-logo :boards (boards org-slug activity
-     (-> claims
-      (assoc :org-uuid org-uuid)
-      (assoc :disallow-secure-links (:disallow-secure-links fixed-content-visibility)))))))
+        fixed-claims (-> claims
+                      (assoc :org-uuid org-uuid)
+                      (assoc :disallow-secure-links (:disallow-secure-links fixed-content-visibility)))]
+    (cond-> {:type :digest
+             :org-slug org-slug
+             :org-name org-name
+             :org-uuid org-uuid
+             :user-id (:user-id claims)
+             :team-id team-id}
+     logo-url (merge {:logo-url logo-url
+                      :logo-width (:logo-width org)
+                      :logo-height (:logo-height org)})
+     true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
+                             :url (section-url org-slug "home")})
+     true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
+                                         :url (section-url org-slug "replies")))
+     true (assoc :new-boards (boards-list org-slug new-boards fixed-claims))
+     true (assoc :unfollowing (assoc unfollowing :url (section-url org-slug "unfollowing")
+                                                 :unfollowing-label (oc-text/unfollowing-summary-label unfollowing))))))
 
 (defn send-trigger! [trigger claims medium]
   (schema/validate DigestTrigger trigger) ; sanity check

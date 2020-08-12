@@ -18,6 +18,7 @@
     [oc.lib.jwt :as jwt]
     [oc.lib.api.common :as api-common]
     [oc.lib.time :as oc-time]
+    [clj-time.core :as clj-time]
     [clojure.string :as string]
     [oc.digest.components :as components]
     [oc.digest.data :as data]
@@ -44,12 +45,19 @@
   
   ([request :guard map? medium]
     (let [{:keys [cookies query-params]} request
-          start-param (get query-params "start")
-          start* (when-not (string/blank? start-param)
-                   (try
-                     (Long. start-param)
-                     (catch java.lang.NumberFormatException e false)))
-          start (or start* (data/default-start))]
+          days-param (try
+                       (Integer/parseInt (get query-params "days"))
+                       (catch java.lang.NumberFormatException e false))
+          start-param (try
+                       (Long. (get query-params "start"))
+                       (catch java.lang.NumberFormatException e false))
+          start (cond
+                 (and (number? days-param) (pos? days-param))
+                 (oc-time/millis (clj-time/minus (clj-time/now) (clj-time/days days-param)))
+                 start-param
+                 start-param
+                 :else
+                 (data/default-start))]
       (if-let* [jwtoken (-> cookies (get cookie-name) :value)
                 _valid? (jwt/valid? jwtoken c/passphrase)]
         (test-digest jwtoken medium start)
@@ -61,13 +69,13 @@
     {:body (str "Email digest test initiated.") :status 200}
     {:body "Failed to initiate an email digest test." :status 500}))
 
-  ([jwtoken :guard string? _medium :guard #(= % "slack") start :guard number?]
-  (if-let [digest-request (data/digest-request-for jwtoken {:medium :slack :start start} false)]
-    {:body (str "Slack digest test initiated.") :status 200}
-    {:body "Failed to initiate a Slack digest test." :status 500}))
+  ; ([jwtoken :guard string? _medium :guard #(= % "slack") start :guard number?]
+  ; (if-let [digest-request (data/digest-request-for jwtoken {:medium :slack :start start} false)]
+  ;   {:body (str "Slack digest test initiated.") :status 200}
+  ;   {:body "Failed to initiate an slack digest test." :status 500}))
 
   ([_jwtoken _medium _start]
-  {:body "Only 'email' or 'Slack' digest testing is supported at this time." :status 501}))
+  {:body "Only 'email' digest testing is supported at this time." :status 501}))
 
 ;; ----- Request Routing -----
 
