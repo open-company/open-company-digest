@@ -47,14 +47,7 @@
    :comment-count schema/Int
    :comment-authors [lib-schema/Author]
    :entry-count schema/Int
-   :replies-label lib-schema/NonBlankStr})
-
-(def UnfollowingSummary
-  {:url lib-schema/NonBlankStr
-   :board-count schema/Int
-   :entry-count schema/Int
-   :entry-author-count schema/Int
-   :unfollowing-label (schema/maybe schema/Str)})
+   :replies-label schema/Any})
 
 (def DigestNewBoards
   {:url lib-schema/NonBlankStr
@@ -82,7 +75,6 @@
    (schema/optional-key :logo-height) schema/Int
    :following DigestFollowingList
    :replies DigestReplies
-   :unfollowing UnfollowingSummary
    :new-boards DigestNewBoards})
 
 (def EmailTrigger (merge DigestTrigger {
@@ -225,7 +217,7 @@
     
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id
                   content-visibility :content-visibility :as org}
-                 {:keys [following replies unfollowing new-boards]}
+                 {:keys [following replies new-boards]}
                  claims]
   (let [fixed-content-visibility (or content-visibility {})
         fixed-claims (-> claims
@@ -244,9 +236,7 @@
                              :url (section-url org-slug "home")})
      true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
                                          :url (section-url org-slug "replies")))
-     true (assoc :new-boards (boards-list org-slug new-boards fixed-claims))
-     true (assoc :unfollowing (assoc unfollowing :url (section-url org-slug "unfollowing")
-                                                 :unfollowing-label (oc-text/unfollowing-summary-label unfollowing))))))
+     true (assoc :new-boards (boards-list org-slug new-boards fixed-claims)))))
 
 (defn send-trigger! [trigger claims medium]
   (schema/validate DigestTrigger trigger) ; sanity check
