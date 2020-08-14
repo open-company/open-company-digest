@@ -235,7 +235,7 @@
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
      true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
-                                         :url (section-url org-slug "replies")))
+                                         :url (section-url org-slug "comments")))
      true (assoc :new-boards (boards-list org-slug new-boards fixed-claims)))))
 
 (defn send-trigger! [trigger claims medium]
