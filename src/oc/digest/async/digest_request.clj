@@ -148,7 +148,7 @@
     {:headline (:headline post-data)
      ; :body (:body post-data)
      :url (post-url org-slug (:board-slug post-data) (:uuid post-data) id-token disallow-secure-links)
-     :publisher (assoc (:publisher post-data) :url (author-url org-slug (:uuid (:publisher post-data))))
+     :publisher (assoc (:publisher post-data) :url (author-url org-slug (:user-id (:publisher post-data))))
      :published-at (:published-at post-data)
      :comment-count-label (when (pos? comment-count)
                             (str comment-count " comment" (when-not (= comment-count 1) "s")))
