@@ -42,7 +42,7 @@
                                                                                  :accept (:accept digest-link)}})]
     (timbre/debug "Loading digest data:" (:href digest-link))
     (if (success? response)
-      (let [{:keys [following replies new-boards] :as result} (-> response :body json/parse-string keywordize-keys :collection)]
+      (let [{:keys [following replies] :as result} (-> response :body json/parse-string keywordize-keys :collection)]
         (cond
           
           (and (empty? following)
@@ -61,7 +61,7 @@
                    "status:" (:status response) "body:" (:body response)))))
 
   ;; Need to get an org from its item link
-  ([org jwtoken {:keys [medium start] :as params} skip-send?]
+  ([org jwtoken {:keys [start] :as params} skip-send?]
   (if-let* [org-link (hateoas/link-for (:links org) "item")
             org-url (str config/storage-server-url (:href org-link))]
     (do
