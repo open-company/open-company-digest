@@ -12,18 +12,19 @@
             [oc.lib.change :as change]
             [oc.lib.hateoas :as hateoas]
             [oc.lib.text :as oc-text]
-            [oc.digest.config :as config]
-            [clj-time.format :as f]
-            [clj-time.core :as t]))
-
-(def iso-format (f/formatters :date-time))
+            [oc.digest.config :as config]))
 
 ;; ----- Schema -----
+
+(def DigestAuthor
+  (merge lib-schema/Author {
+   :url lib-schema/NonBlankStr}))
+
 (def DigestPost
   {:uuid lib-schema/NonBlankStr
    :headline (schema/maybe schema/Str)
    :url lib-schema/NonBlankStr
-   :publisher lib-schema/Author
+   :publisher DigestAuthor
    :published-at lib-schema/ISO8601
    :comment-count-label (schema/maybe schema/Str)
    :new-comment-label (schema/maybe schema/Str)
@@ -73,6 +74,7 @@
    (schema/optional-key :logo-url) (schema/maybe schema/Str)
    (schema/optional-key :logo-width) schema/Int
    (schema/optional-key :logo-height) schema/Int
+   (schema/optional-key :digest-label) [schema/Any]
    :following DigestFollowingList
    :replies DigestReplies
    :new-boards DigestNewBoards})
@@ -125,6 +127,9 @@
        (when-not disallow-secure-links
         (str "?id=" id-token))))
 
+(defn- author-url [org-slug author-id]
+  (str (s/join "/" [config/ui-server-url org-slug "u" author-id])))
+
 ;;  -- Posts --
 
 (defn- post [org-slug claims post-data]
@@ -143,7 +148,7 @@
     {:headline (:headline post-data)
      ; :body (:body post-data)
      :url (post-url org-slug (:board-slug post-data) (:uuid post-data) id-token disallow-secure-links)
-     :publisher (:publisher post-data)
+     :publisher (assoc (:publisher post-data) :url (author-url org-slug (:uuid (:publisher post-data))))
      :published-at (:published-at post-data)
      :comment-count-label (when (pos? comment-count)
                             (str comment-count " comment" (when-not (= comment-count 1) "s")))
@@ -166,15 +171,88 @@
    (select-keys [:name :slug :access :uuid :description :author :created-at])
    (assoc :url (board-url org-slug (:slug board)))))
 
-(defn- boards-list [org-slug new-boards claims]
+(defn- boards-list [org-slug new-boards]
   {:new-boards-label (oc-text/new-boards-summary-node new-boards (partial board-url org-slug))
    :new-boards-list (map (partial board org-slug) new-boards)
    :url (section-url org-slug "topics")})
 
+;; ----- Digest main label -----
+
+(defn- digest-label [org-slug following replies new-boards]
+  (let [new-updates-count (count following)
+        new-updates-label (cond
+                            (= new-updates-count 1)
+                            [:a
+                             {:href (section-url org-slug "home")}
+                             "a new update"]
+                            (> new-updates-count 1)
+                            [:a
+                             {:href (section-url org-slug "home")}
+                             (str new-updates-count " new updates")])
+        new-replies-count (:comment-count replies)
+        new-replies-label (cond
+                            (= new-replies-count 1)
+                            [:a
+                              {:href (section-url org-slug "replies")}
+                              "a new comment"]
+                            (> new-replies-count 1)
+                            [:a
+                              {:href (section-url org-slug "replies")}
+                             (str new-replies-count " new comments")])
+        new-boards-count (count new-boards)
+        new-boards-label (cond
+                           (= new-boards-count 1)
+                           [:a
+                             {:href (section-url org-slug "topics")}
+                             "a new topic"]
+                           (> new-boards-count 1)
+                           [:a
+                             {:href (section-url org-slug "topics")}
+                             (str new-boards-count " new topics")])]
+
+    (cond
+      (and new-updates-label new-replies-label new-boards-label)
+      [:label.digest-label
+       "Since your last digest there were "
+       new-updates-label
+       " and "
+       new-boards-label
+       "."
+       "There " (if (= new-replies-count 1) "is" "are") " also "
+       new-replies-label
+       " on updates you follow"]
+      (and new-updates-label new-boards-label)
+      [:label.digest-label
+       "Since your last digest there were "
+       new-updates-label " and " new-boards-label "."]
+      (and new-updates-label new-replies-label)
+      [:label.digest-label
+       "Since your last digest there were "
+       new-updates-label " and " new-replies-label "."]
+      (and new-boards-label new-replies-label)
+      [:label.digest-label
+       "Since your last digest there were "
+       new-boards-label " and " new-replies-label "."]
+      new-updates-label
+      [:label.digest-label
+       "Since your last digest there "
+       (if (= new-updates-count 1) "was" "were")
+       " " new-updates-label "."]
+      new-boards-label
+      [:label.digest-label
+       "Since your last digest there "
+       (if (= new-boards-label 1) "was" "were")
+       " " new-boards-label "."]
+      new-replies-label
+      [:label.digest-label
+       "Since your last digest there "
+       (if (= new-replies-label 1) "was" "were")
+       " " new-replies-label "."])))
+
 ;; ----- Digest Request Trigger -----
 
 (defun- trigger-for
-  
+
   ;; Slack
   ([trigger claims :slack]
   (let [team-id (:team-id trigger)
@@ -214,7 +292,7 @@
      (assoc :name name)
      (assoc :short-name short-name)
      (assoc :avatar-url (:avatar-url claims))))))
-    
+
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id
                   content-visibility :content-visibility :as org}
                  {:keys [following replies new-boards]}
@@ -232,11 +310,12 @@
      logo-url (merge {:logo-url logo-url
                       :logo-width (:logo-width org)
                       :logo-height (:logo-height org)})
+     true (assoc :digest-label (digest-label org-slug following replies new-boards))
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
      true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
                                          :url (section-url org-slug "comments")))
-     true (assoc :new-boards (boards-list org-slug new-boards fixed-claims)))))
+     true (assoc :new-boards (boards-list org-slug new-boards)))))
 
 (defn send-trigger! [trigger claims medium]
   (schema/validate DigestTrigger trigger) ; sanity check
