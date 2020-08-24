@@ -15,5 +15,7 @@ pom.xml.asc
 /.lein-*
 /.nrepl-port
 
+.eastwood
+
 .ruby-gemset
 .ruby-version

@@ -13,24 +13,24 @@
 
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
-    [org.clojure/clojure "1.10.1"]
-    [org.clojure/tools.cli "0.4.2"] ; commandline parsing https://github.com/clojure/tools.cli
-    [http-kit "2.4.0-alpha5"] ; Web client/server http://http-kit.org/
+    [org.clojure/clojure "1.10.2-alpha1"]
+    [org.clojure/tools.cli "1.0.194"] ; commandline parsing https://github.com/clojure/tools.cli
+    [http-kit "2.4.0"] ; Web client/server http://http-kit.org/
     ;; Web application library https://github.com/ring-clojure/ring
-    [ring/ring-devel "1.8.0"]
+    [ring/ring-devel "2.0.0-alpha1"]
     ;; Web application library https://github.com/ring-clojure/ring
     ;; NB: clj-time pulled in by oc.lib
     ;; NB: joda-time pulled in by oc.lib via clj-time
     ;; NB: commons-codec pulled in by oc.lib
-    [ring/ring-core "1.8.0" :exclusions [clj-time joda-time commons-codec]]
+    [ring/ring-core "2.0.0-alpha1" :exclusions [clj-time joda-time commons-codec]]
     ;; Ring logging https://github.com/nberger/ring-logger-timbre
     ;; NB: com.taoensso/encore pulled in by oc.lib
     ;; NB: com.taoensso/timbre pulled in by oc.lib
-    [ring-logger-timbre "0.7.6" :exclusions [com.taoensso/encore com.taoensso/timbre]] 
+    [ring-logger-timbre "0.7.6" :exclusions [com.taoensso/encore com.taoensso/timbre]]
     ;; Web routing https://github.com/weavejester/compojure
-    [compojure "1.6.1"]
+    [compojure "1.6.2"]
     ;; HTTP client https://github.com/dakrone/clj-http
-    [clj-http "3.10.0"]
+    [clj-http "3.10.2"]
     ;; Simple scheduler https://github.com/juxt/tick
     ;; NB: Don't upgrade to +0.4, it's not backward compatible as timeline/clock/schedele namespaces all deprecated
     [tick "0.3.5"]
@@ -56,7 +56,7 @@
 
   :plugins [
     [lein-ring "0.12.5"]
-    [lein-environ "1.1.0"] ; Get environment settings from different sources https://github.com/weavejester/environ
+    [lein-environ "1.2.0"] ; Get environment settings from different sources https://github.com/weavejester/environ
   ]
 
   :profiles {
@@ -72,13 +72,13 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.9" :exclusions [joda-time clj-time commons-codec]] 
+        [midje "1.9.9" :exclusions [joda-time clj-time commons-codec]]
       ]
       :plugins [
         ;; Example-based testing https://github.com/marick/lein-midje
         [lein-midje "3.2.2"]
         ;; Linter https://github.com/jonase/eastwood
-        [jonase/eastwood "0.3.7"]
+        [jonase/eastwood "0.3.11"]
         ;; Static code search for non-idiomatic code https://github.com/jonase/kibit
         [lein-kibit "0.1.8" :exclusions [org.clojure/clojure]]
       ]
@@ -97,11 +97,11 @@
       :plugins [
         ;; Check for code smells https://github.com/dakrone/lein-bikeshed
         ;; NB: org.clojure/tools.cli is pulled in by lein-kibit
-        [lein-bikeshed "0.5.2" :exclusions [org.clojure/tools.cli]] 
+        [lein-bikeshed "0.5.2" :exclusions [org.clojure/tools.cli]]
         ;; Runs bikeshed, kibit and eastwood https://github.com/itang/lein-checkall
         [lein-checkall "0.1.1"]
         ;; pretty-print the lein project map https://github.com/technomancy/leiningen/tree/master/lein-pprint
-        [lein-pprint "1.2.0"]
+        [lein-pprint "1.3.2"]
         ;; Check for outdated dependencies https://github.com/xsc/lein-ancient
         [lein-ancient "0.6.15"]
         ;; Catch spelling mistakes in docs and docstrings https://github.com/cldwalker/lein-spell
@@ -172,12 +172,12 @@
     "bikeshed!" ["bikeshed" "-v" "-m" "120"] ; code check with max line length warning of 120 characters
     "ancient" ["ancient" ":all" ":allow-qualified"] ; check for out of date dependencies
   }
-  
+
   ;; ----- Code check configuration -----
 
   :eastwood {
     ;; Disable some linters that are enabled by default
-    ;; contant-test - just seems mostly ill-advised, logical constants are useful in something like a `->cond` 
+    ;; contant-test - just seems mostly ill-advised, logical constants are useful in something like a `->cond`
     ;; wrong-arity - unfortunate, but it's failing on 3/arity of sqs/send-message
     ;; implicit-dependencies - uhh, just seems dumb
     :exclude-linters [:constant-test :wrong-arity :implicit-dependencies]
@@ -185,7 +185,7 @@
     :add-linters [:unused-namespaces :unused-private-vars]
 
     :config-files ["third-party-macros.clj"]
-    
+
     ;; Exclude testing namespaces
     :tests-paths ["test"]
     :exclude-namespaces [:test-paths]

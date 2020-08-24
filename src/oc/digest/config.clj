@@ -59,7 +59,3 @@
 
 (defonce cookie-prefix (or (env :cookie-prefix) (str host "-")))
 (defonce passphrase (env :open-company-auth-passphrase))
-
-;; ----- Allowed times -----
-
-(defonce digest-times (set (map keyword (clojure.string/split (or (env :digest-times) "700,1200,1700") #","))))
