@@ -1,18 +1,22 @@
 (ns oc.digest.resources.user
   "Enumerate users stored in RethinkDB and generate JWTokens."
   (:require [defun.core :refer (defun defun-)]
+            [if-let.core :refer (when-let*)]
+            [schema.core :as schema]
             [taoensso.timbre :as timbre]
             [clj-time.core :as t]
             [clj-time.format :as format]
             [java-time :as jt]
+            [oc.lib.schema :as lib-schema]
             [oc.lib.db.common :as db-common]
             [oc.lib.jwt :as jwt]
             [oc.digest.config :as config]))
 
 (def user-props [:user-id :teams :email :first-name :last-name :avatar-url
-                 :digest-medium :status :slack-users :timezone :digest-last-at :digest-delivery])
+                 :digest-medium :timezone :digest-delivery :latest-digest-deliveries
+                 :status :slack-users])
 
-(def not-for-jwt [:digest-medium :status :digest-last-at :digest-delivery])
+(def not-for-jwt [:digest-medium :status :digest-delivery :latest-digest-deliveries])
 
 (def for-jwt {:auth-source :digest
               :refresh-url "N/A"})
@@ -98,6 +102,21 @@
 (defun list-users-for-digest
   [conn instant]
   (for-digest conn instant (db-common/read-resources conn table-name)))
+
+;; ----- User update -----
+
+(schema/defn ^:always-validate last-digest-at!
+  [conn :- lib-schema/Conn user-id :- lib-schema/UniqueID
+   org-id :- lib-schema/UniqueID instant :- lib-schema/ISO8601]
+ (when-let [original-user (db-common/read-resource conn table-name user-id)]
+    (let [latest-deliveries (:latest-digest-deliveries original-user)
+          latest-by-org (zipmap (map :org-id latest-deliveries)
+                                (map :timestamp latest-deliveries))
+          updated-deliveries-by-org (assoc latest-by-org org-id instant)
+          updated-deliveries (map #(hash-map :org-id % :timestamp (updated-deliveries-by-org %))
+                               (keys updated-deliveries-by-org))
+          updated-user (assoc original-user :latest-digest-deliveries updated-deliveries)]
+      (db-common/update-resource conn table-name primary-key original-user updated-user))))
 
 ;; ----- REPL -----
 
