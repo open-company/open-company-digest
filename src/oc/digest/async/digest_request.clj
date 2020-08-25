@@ -31,12 +31,13 @@
    (schema/optional-key :body) (schema/maybe schema/Str)
    :board-slug lib-schema/NonBlankStr
    :board-name lib-schema/NonBlankStr
-   :board-uuid lib-schema/UniqueID})
+   :board-uuid lib-schema/UniqueID
+   :board-url lib-schema/NonBlankStr})
 
 (def DigestBoard
   {:uuid lib-schema/NonBlankStr
    :name lib-schema/NonBlankStr
-   :description (schema/maybe schema/Str)
+   (schema/optional-key:description) (schema/maybe schema/Str)
    :slug lib-schema/NonBlankStr
    :author lib-schema/Author
    :created-at lib-schema/ISO8601
@@ -156,7 +157,8 @@
      :uuid (:uuid post-data)
      :board-name (:board-name post-data)
      :board-slug (:board-slug post-data)
-     :board-uuid (:board-uuid post-data)}))
+     :board-uuid (:board-uuid post-data)
+     :board-url (section-url org-slug (:board-slug post-data))}))
 
 (defn- posts-list [org-slug posts claims]
   (map #(post org-slug claims %) posts))
