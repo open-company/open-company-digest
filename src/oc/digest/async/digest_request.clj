@@ -37,7 +37,7 @@
 (def DigestBoard
   {:uuid lib-schema/NonBlankStr
    :name lib-schema/NonBlankStr
-   (schema/optional-key:description) (schema/maybe schema/Str)
+   (schema/optional-key :description) (schema/maybe schema/Str)
    :slug lib-schema/NonBlankStr
    :author lib-schema/Author
    :created-at lib-schema/ISO8601
