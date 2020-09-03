@@ -5,6 +5,7 @@
     [if-let.core :refer (if-let*)]
     [clj-time.core :as t]
     [clj-time.coerce :as c]
+    [clj-time.format :as f]
     [clj-http.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
@@ -13,6 +14,11 @@
     [oc.lib.hateoas :as hateoas]
     [oc.digest.async.digest-request :as d-r]
     [oc.digest.config :as config]))
+
+;; ----- Default start time -----
+
+(defn default-start []
+  (oc-time/millis (t/minus (t/now) (t/days 1))))
 
 ;; ----- Utility Functions -----
 
@@ -23,17 +29,17 @@
 (defn- log-response [response]
   (str "digest of " (count (:following response)) " followed posts, " (count (:replies response)) " replies posts and " (count (:new-boards response)) " new boards."))
 
-;; ----- Default start time -----
-
-(defn default-start []
-  (oc-time/millis (t/minus (t/now) (t/days 1))))
+(defn- start-for-org [org-id last-digests]
+  (if-let [org-last-digest (first (filter #(= org-id (:org-id %)) last-digests))]
+    (oc-time/millis (f/parse oc-time/timestamp-format (:timestamp org-last-digest)))
+    (default-start)))
 
 ;; ----- Digest Request Generation -----
 
 (defn digest-request-for
   "Recursive function that, given a JWT token, makes a sequence of HTTP requests to get all posts data for
   each org the user is a team member of, and creates a digest request for each."
-  
+
   ;; Need to get an org's activity from its activity link
   ([org digest-link jwtoken {:keys [medium start]} skip-send?]
   (timbre/debug "Retrieving:" (str config/storage-server-url (:href digest-link)) "for:" (d-r/log-token jwtoken))
@@ -44,14 +50,14 @@
     (if (success? response)
       (let [{:keys [following replies] :as result} (-> response :body json/parse-string keywordize-keys :collection)]
         (cond
-          
+
           (and (empty? following)
                (zero? (:entry-count replies)))
           (timbre/debug "Skipping digest request (no updates, no replies, no new boards) for:" (d-r/log-token jwtoken))
-          
+
           skip-send? (timbre/info "Skipping digest request (dry run) for:" (d-r/log-token jwtoken)
                         "with:" (log-response response))
-          
+
           ;; Trigger the digest request for the appropriate medium
           :else (let [claims (-> jwtoken jwt/decode :claims (assoc :digest-last-at (oc-time/to-iso (c/from-long start))))]
                   (d-r/send-trigger! (d-r/->trigger org result claims) claims medium))))
@@ -61,7 +67,7 @@
                    "status:" (:status response) "body:" (:body response)))))
 
   ;; Need to get an org from its item link
-  ([org jwtoken {:keys [start] :as params} skip-send?]
+  ([org jwtoken {:keys [last] :as params} skip-send?]
   (if-let* [org-link (hateoas/link-for (:links org) "item")
             org-url (str config/storage-server-url (:href org-link))]
     (do
@@ -71,6 +77,7 @@
                                           :accept (:accept org-link)}})]
         (if (success? response)
           (let [org (-> response :body json/parse-string keywordize-keys)
+                start (start-for-org (:uuid org) last)
                 digest-link (hateoas/link-for (:links org) "digest" {} {:start start})]
             (digest-request-for org digest-link jwtoken params skip-send?))
           (timbre/warn "Error requesting:" org-link "for:" (d-r/log-token jwtoken)

@@ -42,7 +42,7 @@
 (defonce cookie-name (str c/cookie-prefix "jwt"))
 
 (defun- test-digest
-  
+
   ([request :guard map? medium]
     (let [{:keys [cookies query-params]} request
           days-param (try
@@ -54,10 +54,8 @@
           start (cond
                  (and (number? days-param) (pos? days-param))
                  (oc-time/millis (clj-time/minus (clj-time/now) (clj-time/days days-param)))
-                 start-param
-                 start-param
-                 :else
-                 (data/default-start))]
+                 start-param start-param
+                 :else (data/default-start))]
       (if-let* [jwtoken (-> cookies (get cookie-name) :value)
                 _valid? (jwt/valid? jwtoken c/passphrase)]
         (test-digest jwtoken medium start)
