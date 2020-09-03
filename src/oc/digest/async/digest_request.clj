@@ -180,76 +180,106 @@
 
 ;; ----- Digest main label -----
 
-(defn- digest-label [org-slug following replies new-boards]
-  (let [new-updates-count (count following)
-        new-updates-label (cond
-                            (= new-updates-count 1)
-                            [:a
-                             {:href (section-url org-slug "home")}
-                             "a new update"]
-                            (> new-updates-count 1)
-                            [:a
-                             {:href (section-url org-slug "home")}
-                             (str new-updates-count " new updates")])
-        new-replies-count (:comment-count replies)
-        new-replies-label (cond
-                            (= new-replies-count 1)
-                            [:a
-                              {:href (section-url org-slug "replies")}
-                              "a new comment"]
-                            (> new-replies-count 1)
-                            [:a
-                              {:href (section-url org-slug "replies")}
-                             (str new-replies-count " new comments")])
-        new-boards-count (count new-boards)
-        new-boards-label (cond
-                           (= new-boards-count 1)
-                           [:a
-                             {:href (section-url org-slug "topics")}
-                             "a new topic"]
-                           (> new-boards-count 1)
-                           [:a
-                             {:href (section-url org-slug "topics")}
-                             (str new-boards-count " new topics")])]
+; (defn- digest-label [org-slug following replies new-boards]
+;   (let [new-updates-count (count following)
+;         new-updates-label (cond
+;                             (= new-updates-count 1)
+;                             [:a
+;                              {:href (section-url org-slug "home")}
+;                              "a new update"]
+;                             (> new-updates-count 1)
+;                             [:a
+;                              {:href (section-url org-slug "home")}
+;                              (str new-updates-count " new updates")])
+;         new-replies-count (:comment-count replies)
+;         new-replies-label (cond
+;                             (= new-replies-count 1)
+;                             [:a
+;                               {:href (section-url org-slug "replies")}
+;                               "a new comment"]
+;                             (> new-replies-count 1)
+;                             [:a
+;                               {:href (section-url org-slug "replies")}
+;                              (str new-replies-count " new comments")])
+;         new-boards-count (count new-boards)
+;         new-boards-label (cond
+;                            (= new-boards-count 1)
+;                            [:a
+;                              {:href (section-url org-slug "topics")}
+;                              "a new topic"]
+;                            (> new-boards-count 1)
+;                            [:a
+;                              {:href (section-url org-slug "topics")}
+;                              (str new-boards-count " new topics")])]
 
-    (cond
-      (and new-updates-label new-replies-label new-boards-label)
-      [:label.digest-label
-       "Since your last digest there were "
-       new-updates-label
-       " and "
-       new-boards-label
-       "."
-       "There " (if (= new-replies-count 1) "is" "are") " also "
-       new-replies-label
-       " on updates you follow"]
-      (and new-updates-label new-boards-label)
-      [:label.digest-label
-       "Since your last digest there were "
-       new-updates-label " and " new-boards-label "."]
-      (and new-updates-label new-replies-label)
-      [:label.digest-label
-       "Since your last digest there were "
-       new-updates-label " and " new-replies-label "."]
-      (and new-boards-label new-replies-label)
-      [:label.digest-label
-       "Since your last digest there were "
-       new-boards-label " and " new-replies-label "."]
-      new-updates-label
-      [:label.digest-label
-       "Since your last digest there "
-       (if (= new-updates-count 1) "was" "were")
-       " " new-updates-label "."]
-      new-boards-label
-      [:label.digest-label
-       "Since your last digest there "
-       (if (= new-boards-label 1) "was" "were")
-       " " new-boards-label "."]
-      new-replies-label
-      [:label.digest-label
-       "Since your last digest there "
-       (if (= new-replies-label 1) "was" "were")
-       " " new-replies-label "."])))
+;     (cond
+;       (and new-updates-label new-replies-label new-boards-label)
+;       [:label.digest-label
+;        "Since your last digest there "
+;        (if (= new-updats-count 1) "was" "were")
+;        " "
+;        new-updates-label
+;        " and "
+;        new-boards-label
+;        "."
+;        "There " (if (= new-replies-count 1) "is" "are") " also "
+;        new-replies-label
+;        " on updates you follow"]
+;       (and new-updates-label new-boards-label)
+;       [:label.digest-label
+;        "Since your last digest there were "
+;        new-updates-label " and " new-boards-label "."]
+;       (and new-updates-label new-replies-label)
+;       [:label.digest-label
+;        "Since your last digest there were "
+;        new-updates-label " and " new-replies-label "."]
+;       (and new-boards-label new-replies-label)
+;       [:label.digest-label
+;        "Since your last digest there were "
+;        new-boards-label " and " new-replies-label "."]
+;       new-updates-label
+;       [:label.digest-label
+;        "Since your last digest there "
+;        (if (= new-updates-count 1) "was" "were")
+;        " " new-updates-label "."]
+;       new-boards-label
+;       [:label.digest-label
+;        "Since your last digest there "
+;        (if (= new-boards-label 1) "was" "were")
+;        " " new-boards-label "."]
+;       new-replies-label
+;       [:label.digest-label
+;        "Since your last digest there "
+;        (if (= new-replies-label 1) "was" "were")
+;        " " new-replies-label "."])))
+
+(defn- digest-label [org-slug following replies _new-boards]
+  (let [new-updates-count (count following)
+        new-replies-count (:comment-count replies)]
+    [:label.digst-label
+     "Since your last digest there "
+     (if (or (not= new-updates-count 1)
+             (and (zero? new-updates-count)
+                  (not= new-replies-count 1)))
+       "are "
+       "is ")
+     (when (pos? new-updates-count)
+       [:a
+        {:href (section-url org-slug "home")}
+        (str (when (= new-updates-count 1) "a ")
+             "new update"
+             (when (not= new-updates-count 1) "s"))])
+     (when (and (pos? new-updates-count)
+                (pos? new-replies-count))
+       " and ")
+     (when (pos? new-replies-count)
+       [:a
+        {:href (section-url org-slug "for-you")}
+        (str (when (= new-replies-count 1)
+               "a ")
+             "new comment"
+             (when (not= new-replies-count 1) "s"))])
+     " for you."]))
 
 ;; ----- Digest Request Trigger -----
 
