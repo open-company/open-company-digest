@@ -282,10 +282,17 @@
 ;;              (when (not= new-replies-count 1) "s"))])
 ;;      " for you."]))
 
-(defn- digest-label [claims]
+(defn- digest-label [claims org-slug]
   [:label.digest-label
-    (str "Hey " (:name claims) ", here’s the latest digest. "
-         "Check out the new updates and comments from your team.")])
+   (str "Hey " (:name claims) ", here’s the latest digest. Check out the ")
+   [:a
+    {:href (section-url org-slug "home")}
+    "new updates"]
+   " and "
+   [:a
+    {:href (section-url org-slug "for-you")}
+    "comments"]
+   " from your team."])
 
 ;; ----- Digest Request Trigger -----
 
@@ -348,7 +355,7 @@
      logo-url (merge {:logo-url logo-url
                       :logo-width (:logo-width org)
                       :logo-height (:logo-height org)})
-     true (assoc :digest-label (digest-label fixed-claims))
+     true (assoc :digest-label (digest-label fixed-claims org-slug))
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
      true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
