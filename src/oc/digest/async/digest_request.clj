@@ -253,33 +253,39 @@
 ;        (if (= new-replies-label 1) "was" "were")
 ;        " " new-replies-label "."])))
 
-(defn- digest-label [org-slug following replies _new-boards]
-  (let [new-updates-count (count following)
-        new-replies-count (:comment-count replies)]
-    [:label.digst-label
-     "Since your last digest there "
-     (if (or (not= new-updates-count 1)
-             (and (zero? new-updates-count)
-                  (not= new-replies-count 1)))
-       "are "
-       "is ")
-     (when (pos? new-updates-count)
-       [:a
-        {:href (section-url org-slug "home")}
-        (str (when (= new-updates-count 1) "a ")
-             "new update"
-             (when (not= new-updates-count 1) "s"))])
-     (when (and (pos? new-updates-count)
-                (pos? new-replies-count))
-       " and ")
-     (when (pos? new-replies-count)
-       [:a
-        {:href (section-url org-slug "for-you")}
-        (str (when (= new-replies-count 1)
-               "a ")
-             "new comment"
-             (when (not= new-replies-count 1) "s"))])
-     " for you."]))
+;; (defn- digest-label [claims org-slug following replies _new-boards]
+;;   (let [new-updates-count (count following)
+;;         new-replies-count (:comment-count replies)]
+;;     [:label.digst-label
+;;      "Hey " (:name claims) ", here is the latest digest."
+;;      "Since your last digest there "
+;;      (if (or (not= new-updates-count 1)
+;;              (and (zero? new-updates-count)
+;;                   (not= new-replies-count 1)))
+;;        "are "
+;;        "is ")
+;;      (when (pos? new-updates-count)
+;;        [:a
+;;         {:href (section-url org-slug "home")}
+;;         (str (when (= new-updates-count 1) "a ")
+;;              "new update"
+;;              (when (not= new-updates-count 1) "s"))])
+;;      (when (and (pos? new-updates-count)
+;;                 (pos? new-replies-count))
+;;        " and ")
+;;      (when (pos? new-replies-count)
+;;        [:a
+;;         {:href (section-url org-slug "for-you")}
+;;         (str (when (= new-replies-count 1)
+;;                "a ")
+;;              "new comment"
+;;              (when (not= new-replies-count 1) "s"))])
+;;      " for you."]))
+
+(defn- digest-label [claims]
+  [:label.digest-label
+    (str "Hey " (:name claims) ", here’s the latest digest. "
+         "Check out the new updates and comments from your team.")])
 
 ;; ----- Digest Request Trigger -----
 
@@ -342,7 +348,7 @@
      logo-url (merge {:logo-url logo-url
                       :logo-width (:logo-width org)
                       :logo-height (:logo-height org)})
-     true (assoc :digest-label (digest-label org-slug following replies new-boards))
+     true (assoc :digest-label (digest-label fixed-claims))
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
      true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
