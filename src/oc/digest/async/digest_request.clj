@@ -65,6 +65,7 @@
    :org-slug lib-schema/NonBlankStr
    :org-name lib-schema/NonBlankStr
    :org-uuid lib-schema/UniqueID
+   (schema/optional-key :org-light-brand-color) lib-schema/Color
    :team-id lib-schema/UniqueID
    (schema/optional-key :first-name) (schema/maybe schema/Str)
    (schema/optional-key :last-name) (schema/maybe schema/Str)
@@ -339,7 +340,8 @@
      (assoc :avatar-url (:avatar-url claims))))))
 
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id
-                  content-visibility :content-visibility :as org}
+                  content-visibility :content-visibility
+                  {light-brand-color :light :as brand-color} :brand-color :as org}
                  {:keys [following replies new-boards]}
                  claims]
   (let [fixed-content-visibility (or content-visibility {})
@@ -355,6 +357,7 @@
      logo-url (merge {:logo-url logo-url
                       :logo-width (:logo-width org)
                       :logo-height (:logo-height org)})
+     (map? light-brand-color) (assoc :org-light-brand-color light-brand-color)
      true (assoc :digest-label (digest-label fixed-claims org-slug))
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
