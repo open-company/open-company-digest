@@ -65,6 +65,7 @@
    :org-slug lib-schema/NonBlankStr
    :org-name lib-schema/NonBlankStr
    :org-uuid lib-schema/UniqueID
+   (schema/optional-key :org-light-brand-color) lib-schema/Color
    :team-id lib-schema/UniqueID
    (schema/optional-key :first-name) (schema/maybe schema/Str)
    (schema/optional-key :last-name) (schema/maybe schema/Str)
@@ -253,33 +254,46 @@
 ;        (if (= new-replies-label 1) "was" "were")
 ;        " " new-replies-label "."])))
 
-(defn- digest-label [org-slug following replies _new-boards]
-  (let [new-updates-count (count following)
-        new-replies-count (:comment-count replies)]
-    [:label.digst-label
-     "Since your last digest there "
-     (if (or (not= new-updates-count 1)
-             (and (zero? new-updates-count)
-                  (not= new-replies-count 1)))
-       "are "
-       "is ")
-     (when (pos? new-updates-count)
-       [:a
-        {:href (section-url org-slug "home")}
-        (str (when (= new-updates-count 1) "a ")
-             "new update"
-             (when (not= new-updates-count 1) "s"))])
-     (when (and (pos? new-updates-count)
-                (pos? new-replies-count))
-       " and ")
-     (when (pos? new-replies-count)
-       [:a
-        {:href (section-url org-slug "for-you")}
-        (str (when (= new-replies-count 1)
-               "a ")
-             "new comment"
-             (when (not= new-replies-count 1) "s"))])
-     " for you."]))
+;; (defn- digest-label [claims org-slug following replies _new-boards]
+;;   (let [new-updates-count (count following)
+;;         new-replies-count (:comment-count replies)]
+;;     [:label.digst-label
+;;      "Hey " (:name claims) ", here is the latest digest."
+;;      "Since your last digest there "
+;;      (if (or (not= new-updates-count 1)
+;;              (and (zero? new-updates-count)
+;;                   (not= new-replies-count 1)))
+;;        "are "
+;;        "is ")
+;;      (when (pos? new-updates-count)
+;;        [:a
+;;         {:href (section-url org-slug "home")}
+;;         (str (when (= new-updates-count 1) "a ")
+;;              "new update"
+;;              (when (not= new-updates-count 1) "s"))])
+;;      (when (and (pos? new-updates-count)
+;;                 (pos? new-replies-count))
+;;        " and ")
+;;      (when (pos? new-replies-count)
+;;        [:a
+;;         {:href (section-url org-slug "for-you")}
+;;         (str (when (= new-replies-count 1)
+;;                "a ")
+;;              "new comment"
+;;              (when (not= new-replies-count 1) "s"))])
+;;      " for you."]))
+
+(defn- digest-label [claims org-slug]
+  [:label.digest-label
+   (str "Hey " (:name claims) ", here’s the latest digest. Check out the ")
+   [:a
+    {:href (section-url org-slug "home")}
+    "new updates"]
+   " and "
+   [:a
+    {:href (section-url org-slug "for-you")}
+    "comments"]
+   " from your team."])
 
 ;; ----- Digest Request Trigger -----
 
@@ -326,7 +340,8 @@
      (assoc :avatar-url (:avatar-url claims))))))
 
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id
-                  content-visibility :content-visibility :as org}
+                  content-visibility :content-visibility
+                  {light-brand-color :light :as brand-color} :brand-color :as org}
                  {:keys [following replies new-boards]}
                  claims]
   (let [fixed-content-visibility (or content-visibility {})
@@ -342,7 +357,8 @@
      logo-url (merge {:logo-url logo-url
                       :logo-width (:logo-width org)
                       :logo-height (:logo-height org)})
-     true (assoc :digest-label (digest-label org-slug following replies new-boards))
+     (map? light-brand-color) (assoc :org-light-brand-color light-brand-color)
+     true (assoc :digest-label (digest-label fixed-claims org-slug))
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
      true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
