@@ -48,8 +48,10 @@
   (let [user-tz (or (:timezone user) default-tz)
         ;; This schedule tick time in the user's local time zone
         time-for-user (jt/with-zone-same-instant instant user-tz)
+        ;; Transform the delivery times in a vector to keep the order
+        times-vec (vec (:digest-delivery user))
         ;; Of the possible digest times, those that this user selected for themself
-        user-digest-times (map #(jt/local-time (/ (Integer. %) 100)) (:digest-delivery user))
+        user-digest-times (map #(jt/local-time (/ (Integer. %) 100)) times-vec)
         ;; Possible digest times in local time for the user
         local-digest-times-for-user (map #(jt/adjust (jt/with-zone (jt/zoned-date-time) user-tz) %) user-digest-times)
         ;; The delta in minutes between schedule tick time and digest in the users TZ
@@ -59,12 +61,22 @@
                                 (- (Math/abs %) day-fix) ; Remove the day ahead or behind
                                 %) time-deltas)
         ;; Is it 0 mins from a digest local time, or it's in less than 59m from now?
-        time-for-digest? (or (some #(and (or (zero? %) (pos? %)) (< % 59)) adjusted-deltas) false)]
+        run-on-time (mapv #(and (or (zero? %) (pos? %)) (< % 59)) adjusted-deltas)
+        time? (some #(when (nth run-on-time %) (Integer. (nth times-vec %))) (range (count (:digest-delivery user))))
+        digest-time (cond
+                      (> time? 1759) ;; After 17:59 is evening
+                      :evening
+                      (> time? 1159) ;; after 11:59 is afternoon
+                      :afternoon
+                      :else ;; all the rest is morning
+                      :morning)]
     (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" time-for-user)
     (timbre/debug "Digest times for user" (:email user) ":" (vec local-digest-times-for-user))
     (timbre/debug "Minutes between now and digest time for for user" (:email user) ":" (vec adjusted-deltas))
-    (timbre/debug "Digest now for user" (:email user) "?" time-for-digest?)
-  (assoc user :now? time-for-digest?)))
+    (timbre/debug "Digest now for user" (:email user) "?" time? "digest-time:" digest-time)
+  (assoc user
+         :now? time?
+         :digest-time digest-time)))
 
 ;; ----- Prep raw user for digest request -----
 

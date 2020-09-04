@@ -35,7 +35,7 @@
   each org the user is a team member of, and creates a digest request for each."
   
   ;; Need to get an org's activity from its activity link
-  ([org digest-link jwtoken {:keys [medium start]} skip-send?]
+  ([org digest-link jwtoken {:keys [medium start digest-time]} skip-send?]
   (timbre/debug "Retrieving:" (str config/storage-server-url (:href digest-link)) "for:" (d-r/log-token jwtoken))
   (let [;; Retrieve activity data for the digest
         response (httpc/get (str config/storage-server-url (:href digest-link)) {:headers {:authorization (str "Bearer " jwtoken)
@@ -54,7 +54,7 @@
           
           ;; Trigger the digest request for the appropriate medium
           :else (let [claims (-> jwtoken jwt/decode :claims (assoc :digest-last-at (oc-time/to-iso (c/from-long start))))]
-                  (d-r/send-trigger! (d-r/->trigger org result claims) claims medium))))
+                  (d-r/send-trigger! (d-r/->trigger org result claims digest-time) claims medium))))
 
       ;; Failed to get activity for the digest
       (timbre/warn "Error requesting:" (:href digest-link) "for:" (d-r/log-token jwtoken)

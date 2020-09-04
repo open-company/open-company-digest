@@ -35,7 +35,9 @@
         user-last-digest (or (:digest-last-at user) (:created-at user) (data/default-start))
         start (f/parse oc-time/timestamp-format user-last-digest)]
     (try
-      (data/digest-request-for (:jwtoken user) {:medium medium :start (oc-time/millis start)} skip-send?)
+      (data/digest-request-for (:jwtoken user) {:medium medium
+                                                :start (oc-time/millis start)
+                                                :digest-time (or (:digest-time user) :morning)} skip-send?)
       (catch Exception e
         (timbre/warn "Digest failed for user:" user)
         (timbre/error e)))))

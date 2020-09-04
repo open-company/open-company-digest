@@ -5,6 +5,8 @@
             [amazonica.aws.sqs :as sqs]
             [taoensso.timbre :as timbre]
             [schema.core :as schema]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format]
             [oc.lib.schema :as lib-schema]
             [oc.lib.jwt :as jwt]
             [oc.lib.auth :as auth]
@@ -65,7 +67,7 @@
    :org-slug lib-schema/NonBlankStr
    :org-name lib-schema/NonBlankStr
    :org-uuid lib-schema/UniqueID
-   (schema/optional-key :org-light-brand-color) lib-schema/Color
+   (schema/optional-key :org-light-brand-color) lib-schema/OCBrandColor
    :team-id lib-schema/UniqueID
    (schema/optional-key :first-name) (schema/maybe schema/Str)
    (schema/optional-key :last-name) (schema/maybe schema/Str)
@@ -285,15 +287,30 @@
 
 (defn- digest-label [claims org-slug]
   [:label.digest-label
-   (str "Hey " (:name claims) ", here’s the latest digest. Check out the ")
+   (str "Hey " (:short-name claims) ", here’s the latest digest. Check out the ")
    [:a
     {:href (section-url org-slug "home")}
     "new updates"]
    " and "
    [:a
     {:href (section-url org-slug "for-you")}
-    "comments"]
+    "new comments"]
    " from your team."])
+
+(def digest-subject-format (time-format/formatter "MMM d, YYYY"))
+
+(defn- digest-subject [digest-time org-name]
+  (let [date-str (time-format/unparse digest-subject-format (time/now))
+        emoji (cond
+                (= digest-time :morning)
+                "☕️ "
+                (= digest-time :afternoon)
+                "🌮 "
+                (= digest-time :evening)
+                "🙌 "
+                :else
+                "")]
+    (str emoji "Your " (or org-name "Carrot") " digest for " date-str)))
 
 ;; ----- Digest Request Trigger -----
 
@@ -343,7 +360,8 @@
                   content-visibility :content-visibility
                   {light-brand-color :light :as brand-color} :brand-color :as org}
                  {:keys [following replies new-boards]}
-                 claims]
+                 claims
+                 digest-time]
   (let [fixed-content-visibility (or content-visibility {})
         fixed-claims (-> claims
                       (assoc :org-uuid org-uuid)
@@ -359,6 +377,7 @@
                       :logo-height (:logo-height org)})
      (map? light-brand-color) (assoc :org-light-brand-color light-brand-color)
      true (assoc :digest-label (digest-label fixed-claims org-slug))
+     true (assoc :digest-subject (digest-subject digest-time org-name))
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
      true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
