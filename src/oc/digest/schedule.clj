@@ -17,7 +17,6 @@
             [oc.lib.db.pool :as pool]
             [oc.lib.time :as oc-time]
             [clj-time.core :as t]
-            [clj-time.format :as f]
             [oc.digest.resources.user :as user-res]
             [oc.digest.data :as data])
   (:gen-class))
@@ -31,18 +30,14 @@
 ;; ----- Digest Request Generation -----
 
 (defn- digest-for [user skip-send?]
-  (let [medium (or (keyword (:digest-medium user)) :email)
-        user-last-digest (or (:digest-last-at user) (:created-at user) (data/default-start))
-        start (f/parse oc-time/timestamp-format user-last-digest)]
+  (let [medium (or (keyword (:digest-medium user)) :email)]
     (try
-      (data/digest-request-for (:jwtoken user) {:medium medium
-                                                :start (oc-time/millis start)
-                                                :digest-time (or (:digest-time user) :morning)} skip-send?)
+      (data/digest-request-for (:jwtoken user) {:medium medium :last (:latest-digest-deliveries user) :digest-time (or (:digest-time user) :morning)} skip-send?)
       (catch Exception e
         (timbre/warn "Digest failed for user:" user)
         (timbre/error e)))))
 
-(defun digest-run 
+(defun digest-run
 
   ([conn :guard map? instant] (digest-run conn instant false))
 
@@ -97,14 +92,14 @@
     (timbre/info "Stopping digest schedule...")
     (schedule/stop @digest-schedule)
     (reset! digest-schedule false))
-  
+
   (reset! db-pool false))
 
 ;; ----- REPL -----
 
 (comment
 
-  (require '[oc.digest.schedule :as digest-schedule] :reload)
+  (require '[oc.digest.schedule :as sched] :reload)
 
   ;; Top of the current hour
   (def i (jt/truncate-to (jt/zoned-date-time) :hours))
@@ -114,6 +109,6 @@
   (def i (jt/plus i (jt/hours 1)))
 
   ;; Kick off a digest run
-  (digest-schedule/digest-run conn i)
+  (sched/digest-run conn i) ; add a 3rd argument of true to skip the email send
 
 )
