@@ -79,6 +79,7 @@
    (schema/optional-key :logo-width) schema/Int
    (schema/optional-key :logo-height) schema/Int
    (schema/optional-key :digest-label) [schema/Any]
+   (schema/optional-key :digest-subject) schema/Str
    :following DigestFollowingList
    :replies DigestReplies
    :new-boards DigestNewBoards})
