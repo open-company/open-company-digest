@@ -51,7 +51,7 @@
         ;; Transform the delivery times in a vector to keep the order
         times-vec (vec (:digest-delivery user))
         ;; Of the possible digest times, those that this user selected for themself
-        user-digest-times (map #(jt/local-time (/ (Integer. %) 100)) times-vec)
+        user-digest-times (mapv #(jt/local-time (/ (Integer. %) 100)) times-vec)
         ;; Possible digest times in local time for the user
         local-digest-times-for-user (map #(jt/adjust (jt/with-zone (jt/zoned-date-time) user-tz) %) user-digest-times)
         ;; The delta in minutes between schedule tick time and digest in the users TZ
@@ -62,18 +62,18 @@
                                 %) time-deltas)
         ;; Is it 0 mins from a digest local time, or it's in less than 59m from now?
         run-on-time (mapv #(and (or (zero? %) (pos? %)) (< % 59)) adjusted-deltas)
-        time? (some #(when (nth run-on-time %) (Integer. (nth times-vec %))) (range (count (:digest-delivery user))))
-        digest-time (cond
-                      (> time? 1759) ;; After 17:59 is evening
-                      :evening
-                      (> time? 1159) ;; after 11:59 is afternoon
-                      :afternoon
-                      :else ;; all the rest is morning
-                      :morning)]
+        time? (some #(when (get run-on-time %) (Integer. (get times-vec %))) (range (count times-vec)))
+        digest-time (when time?
+                      (cond (> time? 1759) ;; After 17:59 is evening
+                            :evening
+                            (> time? 1159) ;; after 11:59 is afternoon
+                            :afternoon
+                            :else ;; all the rest is morning
+                            :morning))]
     (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" time-for-user)
     (timbre/debug "Digest times for user" (:email user) ":" (vec local-digest-times-for-user))
     (timbre/debug "Minutes between now and digest time for for user" (:email user) ":" (vec adjusted-deltas))
-    (timbre/debug "Digest now for user" (:email user) "?" time? "digest-time:" digest-time)
+    (timbre/debug "Digest now for user" (:email user) "?" time? "->" digest-time)
   (assoc user
          :now? time?
          :digest-time digest-time)))
