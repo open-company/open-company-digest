@@ -299,7 +299,7 @@
      [:a
       (merge {:href (section-url org-slug "for-you")} link-style)
       "new comments"]
-     " from your team."])
+     " from your team."]))
 
 (def digest-subject-format (time-format/formatter "MMM d, YYYY"))
 
