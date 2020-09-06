@@ -286,17 +286,20 @@
 ;;              (when (not= new-replies-count 1) "s"))])
 ;;      " for you."]))
 
-(defn- digest-label [claims org-slug]
-  [:label.digest-label
-   (str "Hey " (:short-name claims) ", here’s the latest digest. Check out the ")
-   [:a
-    {:href (section-url org-slug "home")}
-    "new updates"]
-   " and "
-   [:a
-    {:href (section-url org-slug "for-you")}
-    "new comments"]
-   " from your team."])
+(defn- digest-label [claims org-slug primary-color]
+  (let [link-style (if (:hex primary-color)
+                     {:style {:color (:hex primary-color)}}
+                     {})]
+    [:label.digest-label
+     (str "Hey " (:short-name claims) ", here’s the latest digest. Check out the ")
+     [:a
+      (merge {:href (section-url org-slug "home")} link-style)
+      "new updates"]
+     " and "
+     [:a
+      (merge {:href (section-url org-slug "for-you")} link-style)
+      "new comments"]
+     " from your team."])
 
 (def digest-subject-format (time-format/formatter "MMM d, YYYY"))
 
@@ -377,7 +380,7 @@
                       :logo-width (:logo-width org)
                       :logo-height (:logo-height org)})
      (map? light-brand-color) (assoc :org-light-brand-color light-brand-color)
-     true (assoc :digest-label (digest-label fixed-claims org-slug))
+     true (assoc :digest-label (digest-label fixed-claims org-slug (:primary light-brand-color)))
      true (assoc :digest-subject (digest-subject digest-time org-name))
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
