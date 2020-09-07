@@ -64,9 +64,9 @@
         run-on-time (mapv #(and (or (zero? %) (pos? %)) (< % 59)) adjusted-deltas)
         time? (some #(when (get run-on-time %) (Integer. (get times-vec %))) (range (count times-vec)))
         digest-time (when time?
-                      (cond (> time? 1759) ;; After 17:59 is evening
+                      (cond (> time? 1600) ;; After 17:59 is evening
                             :evening
-                            (> time? 1159) ;; after 11:59 is afternoon
+                            (> time? 1100) ;; after 11:59 is afternoon
                             :afternoon
                             :else ;; all the rest is morning
                             :morning))]
