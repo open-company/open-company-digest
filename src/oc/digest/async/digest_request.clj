@@ -286,26 +286,32 @@
 ;;              (when (not= new-replies-count 1) "s"))])
 ;;      " for you."]))
 
-(defn- digest-label [claims org-slug primary-color]
+(def digest-date-format (time-format/formatter "MMM d, YYYY"))
+
+(defn digest-date []
+  (time-format/unparse digest-date-format (time/now)))
+
+(defn- digest-label [claims digest-time date-string org-slug primary-color]
   (let [link-style (if (:hex primary-color)
                      {:style {:color (:hex primary-color)}}
-                     {})]
+                     {})
+        digest-time-string (when (keyword? digest-time)
+                             (str (name digest-time) " "))]
     [:label.digest-label
-     (str "Hey " (:short-name claims) ", here’s the latest digest. Check out the ")
+     (str "Hi " (:short-name claims) ", here's your " digest-time-string "digest for "
+          date-string
+          ". Check out the latest ")
      [:a
       (merge {:href (section-url org-slug "home")} link-style)
-      "new updates"]
+      "updates"]
      " and "
      [:a
       (merge {:href (section-url org-slug "for-you")} link-style)
-      "new comments"]
+      "comments"]
      " from your team."]))
 
-(def digest-subject-format (time-format/formatter "MMM d, YYYY"))
-
-(defn- digest-subject [digest-time org-name]
-  (let [date-str (time-format/unparse digest-subject-format (time/now))
-        emoji (cond
+(defn- digest-subject [digest-time date-string org-name]
+  (let [emoji (cond
                 (= digest-time :morning)
                 "☕️ "
                 (= digest-time :afternoon)
@@ -313,8 +319,10 @@
                 (= digest-time :evening)
                 "🙌 "
                 :else
-                "")]
-    (str emoji "Your " (or org-name "Carrot") " digest for " date-str)))
+                "")
+        digest-time-string (when (keyword? digest-time)
+                             (name digest-time))]
+    (str emoji "Your " (or org-name "Carrot") " " digest-time-string " digest for " date-string)))
 
 ;; ----- Digest Request Trigger -----
 
@@ -369,7 +377,8 @@
   (let [fixed-content-visibility (or content-visibility {})
         fixed-claims (-> claims
                       (assoc :org-uuid org-uuid)
-                      (assoc :disallow-secure-links (:disallow-secure-links fixed-content-visibility)))]
+                      (assoc :disallow-secure-links (:disallow-secure-links fixed-content-visibility)))
+        date-string (digest-date)]
     (cond-> {:type :digest
              :org-slug org-slug
              :org-name org-name
@@ -380,8 +389,8 @@
                       :logo-width (:logo-width org)
                       :logo-height (:logo-height org)})
      (map? light-brand-color) (assoc :org-light-brand-color light-brand-color)
-     true (assoc :digest-label (digest-label fixed-claims org-slug (:primary light-brand-color)))
-     true (assoc :digest-subject (digest-subject digest-time org-name))
+     true (assoc :digest-label (digest-label fixed-claims date-string org-slug (:primary light-brand-color)))
+     true (assoc :digest-subject (digest-subject digest-time date-string org-name))
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
      true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
