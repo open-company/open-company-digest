@@ -274,8 +274,10 @@
                  digest-time]
   (let [fixed-content-visibility (or content-visibility {})
         fixed-claims (-> claims
-                      (assoc :org-uuid org-uuid)
-                      (assoc :disallow-secure-links (:disallow-secure-links fixed-content-visibility)))
+                         (assoc :name (lib-user/name-for claims))
+                         (assoc :short-name (lib-user/short-name-for claims))
+                         (assoc :org-uuid org-uuid)
+                         (assoc :disallow-secure-links (:disallow-secure-links fixed-content-visibility)))
         date-string (digest-date)]
     (cond-> {:type :digest
              :org-slug org-slug
