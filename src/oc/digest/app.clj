@@ -99,7 +99,11 @@
     "Change service URL: " c/change-server-url "\n"
     "Web URL: " c/ui-server-url "\n"
     "Hot-reload: " c/hot-reload "\n"
-    "Sentry: " c/dsn "\n\n"
+    "Sentry: " c/dsn "\n"
+    "  env: " c/sentry-env "\n"
+    (when-not (clojure.string/blank? c/sentry-release)
+      (str "  release: " c/sentry-release "\n"))
+    "\n"
     (when c/intro? "Ready to serve...\n"))))
 
 (defn echo-cli-config []
@@ -112,7 +116,9 @@
 (defn app [sys]
   (cond-> (routes sys)
     c/prod?           api-common/wrap-500 ; important that this is first
-    c/dsn             (sentry-mw/wrap-sentry c/dsn) ; important that this is second
+    ; important that this is second
+    c/dsn             (sentry-mw/wrap-sentry c/dsn {:environment c/sentry-env
+                                                    :release c/sentry-release})
     c/prod?           wrap-with-logger
     true              wrap-params
     true              wrap-cookies
