@@ -51,8 +51,7 @@
       (let [{:keys [following replies] :as result} (-> response :body json/parse-string keywordize-keys :collection)]
         (cond
 
-          (and (empty? following)
-               (zero? (:entry-count replies)))
+          (empty? following)
           (timbre/debug "Skipping digest request (no updates, no replies, no new boards) for:" (d-r/log-token jwtoken))
 
           skip-send? (timbre/info "Skipping digest request (dry run) for:" (d-r/log-token jwtoken)
