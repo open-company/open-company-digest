@@ -205,7 +205,7 @@
      " and "
      [:a
       (merge {:href (section-url org-slug "for-you")} link-style)
-      "comments"]
+      "activity"]
      " from your team."]))
 
 (defn- digest-subject [digest-time date-string org-name]
@@ -294,7 +294,7 @@
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
      true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
-                                         :url (section-url org-slug "comments")))
+                                         :url (section-url org-slug "activity")))
      true (assoc :new-boards (boards-list org-slug new-boards)))))
 
 (defn send-trigger! [trigger claims medium]
