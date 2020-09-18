@@ -2,6 +2,7 @@
   (:require [com.stuartsierra.component :as component]
             [taoensso.timbre :as timbre]
             [org.httpkit.server :as httpkit]
+            [oc.lib.sentry.core :refer (map->SentryCapturer)]
             [oc.lib.db.pool :as pool]
             [oc.digest.schedule :as schedule]
             [oc.digest.config :as c]))
@@ -56,9 +57,12 @@
   (component/system-map
    :db-pool (map->RethinkPool {:size c/db-pool-size :regenerate-interval 5})))
 
-(defn digest-system [{:keys [port handler-fn]}]
+(defn digest-system [{:keys [port handler-fn sentry]}]
   (component/system-map
-    :db-pool (map->RethinkPool {:size c/db-pool-size :regenerate-interval 5})
+    :sentry-capturer (map->SentryCapturer sentry)
+    :db-pool (component/using
+              (map->RethinkPool {:size c/db-pool-size :regenerate-interval 5})
+              [:sentry-capturer])
     :scheduler (if (pos? port)
                 (component/using
                   (map->Scheduler {})

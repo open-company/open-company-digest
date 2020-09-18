@@ -4,9 +4,7 @@
   (:require
     [defun.core :refer (defun-)]
     [if-let.core :refer (if-let*)]
-    [raven-clj.core :as sentry]
-    [raven-clj.interfaces :as sentry-interfaces]
-    [raven-clj.ring :as sentry-mw]
+    [oc.lib.sentry.core :as sentry]
     [taoensso.timbre :as timbre]
     [ring.logger.timbre :refer (wrap-with-logger)]
     [ring.middleware.params :refer (wrap-params)]
@@ -14,7 +12,6 @@
     [ring.middleware.cookies :refer (wrap-cookies)]
     [compojure.core :as compojure :refer (GET)]
     [com.stuartsierra.component :as component]
-    [oc.lib.sentry-appender :as sa]
     [oc.lib.jwt :as jwt]
     [oc.lib.api.common :as api-common]
     [oc.lib.time :as oc-time]
@@ -23,19 +20,6 @@
     [oc.digest.components :as components]
     [oc.digest.data :as data]
     [oc.digest.config :as c]))
-
-;; ----- Unhandled Exceptions -----
-
-;; Send unhandled exceptions to log and Sentry
-;; See https://stuartsierra.com/2015/05/27/clojure-uncaught-exceptions
-(Thread/setDefaultUncaughtExceptionHandler
- (reify Thread$UncaughtExceptionHandler
-   (uncaughtException [_ thread ex]
-     (timbre/error ex "Uncaught exception on" (.getName thread) (.getMessage ex))
-     (when c/dsn
-       (sentry/capture c/dsn (-> {:message (.getMessage ex)}
-                                 (assoc-in [:extra :exception-data] (ex-data ex))
-                                 (sentry-interfaces/stacktrace ex)))))))
 
 ;; ----- Test Digest Sending -----
 
@@ -101,7 +85,7 @@
     "Hot-reload: " c/hot-reload "\n"
     "Sentry: " c/dsn "\n"
     "  env: " c/sentry-env "\n"
-    (when-not (clojure.string/blank? c/sentry-release)
+    (when-not (string/blank? c/sentry-release)
       (str "  release: " c/sentry-release "\n"))
     "\n"
     (when c/intro? "Ready to serve...\n"))))
@@ -117,8 +101,7 @@
   (cond-> (routes sys)
     c/prod?           api-common/wrap-500 ; important that this is first
     ; important that this is second
-    c/dsn             (sentry-mw/wrap-sentry c/dsn {:environment c/sentry-env
-                                                    :release c/sentry-release})
+    c/dsn             (sentry/wrap sys)
     c/prod?           wrap-with-logger
     true              wrap-params
     true              wrap-cookies
@@ -132,11 +115,15 @@
   (if c/dsn
     (timbre/merge-config!
       {:level (keyword c/log-level)
-       :appenders {:sentry (sa/sentry-appender c/dsn)}})
+       :appenders {:sentry (sentry/sentry-appender c/dsn)}})
     (timbre/merge-config! {:level (keyword c/log-level)}))
 
   ;; Start the system
-  (let [sys (-> {:handler-fn app :port port}
+  (let [sys (-> {:sentry {:dsn c/dsn
+                          :release c/sentry-release
+                          :environment c/sentry-env}
+                 :handler-fn app
+                 :port port}
               components/digest-system
               component/start)]
 
