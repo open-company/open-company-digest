@@ -115,13 +115,11 @@
   (if c/dsn
     (timbre/merge-config!
       {:level (keyword c/log-level)
-       :appenders {:sentry (sentry/sentry-appender c/dsn)}})
+       :appenders {:sentry (sentry/sentry-appender c/sentry-config)}})
     (timbre/merge-config! {:level (keyword c/log-level)}))
 
   ;; Start the system
-  (let [sys (-> {:sentry {:dsn c/dsn
-                          :release c/sentry-release
-                          :environment c/sentry-env}
+  (let [sys (-> {:sentry c/sentry-config
                  :handler-fn app
                  :port port}
               components/digest-system
