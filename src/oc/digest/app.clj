@@ -14,8 +14,6 @@
     [com.stuartsierra.component :as component]
     [oc.lib.jwt :as jwt]
     [oc.lib.api.common :as api-common]
-    [oc.lib.time :as oc-time]
-    [clj-time.core :as clj-time]
     [clojure.string :as string]
     [oc.digest.components :as components]
     [oc.digest.data :as data]
@@ -37,7 +35,7 @@
                        (catch java.lang.NumberFormatException e false))
           start (cond
                  (and (number? days-param) (pos? days-param))
-                 (oc-time/millis (clj-time/minus (clj-time/now) (clj-time/days days-param)))
+                 (data/days-ago-millis days-param)
                  start-param start-param
                  :else (data/default-start))]
       (if-let* [jwtoken (-> cookies (get cookie-name) :value)

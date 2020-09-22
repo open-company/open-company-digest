@@ -17,8 +17,11 @@
 
 ;; ----- Default start time -----
 
+(defn days-ago-millis [days]
+  (oc-time/millis (t/minus (t/now) (t/days days))))
+
 (defn default-start []
-  (oc-time/millis (t/minus (t/now) (t/days 1))))
+  (days-ago-millis 1))
 
 ;; ----- Utility Functions -----
 
