@@ -18,7 +18,7 @@
       component
       (do
         (server)
-        (dissoc component :server)))))
+        (assoc component :server nil)))))
 
 (defrecord RethinkPool [size regenerate-interval pool]
   component/Lifecycle
@@ -32,7 +32,7 @@
     (if pool
       (do
         (pool/shutdown-pool! pool)
-        (dissoc component :pool))
+        (assoc component :pool nil))
       component)))
 
 (defrecord Handler [handler-fn]
@@ -41,7 +41,7 @@
     (timbre/info "[handler] starting")
     (assoc component :handler (handler-fn component)))
   (stop [component]
-    (dissoc component :handler)))
+    (assoc component :handler nil)))
 
 (defrecord Scheduler [db-pool]
   component/Lifecycle
@@ -51,7 +51,7 @@
     (assoc component :scheduler true))
   (stop [component]
     (schedule/stop)
-    (dissoc component :scheduler false)))
+    (assoc component :scheduler false)))
 
 (defn db-only-digest-system [_opts]
   (component/system-map
