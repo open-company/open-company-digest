@@ -38,7 +38,7 @@
     [clojure.java-time "0.3.2"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.17.29-alpha41"]
+    [open-company/lib "0.17.29-alpha45"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
     ;; if-let - More than one binding for if/when macros https://github.com/LockedOn/if-let
