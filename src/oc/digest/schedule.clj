@@ -30,7 +30,7 @@
 ;; ----- Digest Request Generation -----
 
 (defn- digest-for [user skip-send?]
-  (let [medium (or (keyword (:digest-medium user)) :email)]
+  (let [medium  :email] ;; Hardcode email digest for everybody (or (keyword (:digest-medium user)) :email)]
     (try
       (data/digest-request-for (:jwtoken user) {:medium medium :last (:latest-digest-deliveries user) :digest-time (or (:digest-time user) :morning)} skip-send?)
       (catch Exception e
