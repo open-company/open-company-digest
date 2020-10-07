@@ -189,7 +189,7 @@
 (defn digest-date []
   (time-format/unparse digest-date-format (time/now)))
 
-(defn- digest-label [claims digest-time date-string org-slug primary-color]
+(defn- digest-label [claims comment-count digest-time date-string org-slug primary-color]
   (let [link-style (if (:hex primary-color)
                      {:style {:color (:hex primary-color)}}
                      {})
@@ -205,8 +205,10 @@
      " and "
      [:a
       (merge {:href (section-url org-slug "for-you")} link-style)
-      "activity"]
-     " from your team."]))
+      (if (pos? comment-count)
+        (str comment-count " comment" (when (> comment-count 1) "s"))
+        "comments")]
+     " on updates you're watching."]))
 
 (defn- digest-subject [digest-time date-string org-name]
   (let [digest-time-string (when (keyword? digest-time)
@@ -280,7 +282,7 @@
                       :logo-width (:logo-width org)
                       :logo-height (:logo-height org)})
      (map? light-brand-color) (assoc :org-light-brand-color light-brand-color)
-     true (assoc :digest-label (digest-label fixed-claims digest-time date-string org-slug (:primary light-brand-color)))
+     true (assoc :digest-label (digest-label fixed-claims (:comment-count replies) digest-time date-string org-slug (:primary light-brand-color)))
      true (assoc :digest-subject (digest-subject digest-time date-string org-name))
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
