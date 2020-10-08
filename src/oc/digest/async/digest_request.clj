@@ -204,7 +204,7 @@
       "updates"]
      " and "
      [:a
-      (merge {:href (section-url org-slug "for-you")} link-style)
+      (merge {:href (section-url org-slug "activity")} link-style)
       (if (pos? comment-count)
         (str comment-count " comment" (when (> comment-count 1) "s"))
         "comments")]
