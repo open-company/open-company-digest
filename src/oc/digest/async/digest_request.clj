@@ -212,8 +212,9 @@
 
 (defn- digest-subject [digest-time date-string org-name]
   (let [digest-time-string (when (keyword? digest-time)
-                             (name digest-time))]
-    (str (or org-name "Carrot") " " digest-time-string " digest for " date-string)))
+                             (name digest-time))
+        emoji (if (= digest-time :morning) "☀️ " "")]
+    (str emoji " " (or org-name "Carrot") " " digest-time-string " digest for " date-string)))
 
 ;; ----- Digest Request Trigger -----
 
