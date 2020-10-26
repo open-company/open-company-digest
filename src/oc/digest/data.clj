@@ -12,7 +12,9 @@
     [oc.lib.jwt :as jwt]
     [oc.lib.time :as oc-time]
     [oc.lib.hateoas :as hateoas]
+    [oc.lib.db.pool :as db-pool]
     [oc.digest.async.digest-request :as d-r]
+    [oc.digest.resources.user :as user-res]
     [oc.digest.config :as config]))
 
 ;; ----- Default start time -----
@@ -37,11 +39,25 @@
     (oc-time/millis (f/parse oc-time/timestamp-format (:timestamp org-last-digest)))
     (default-start)))
 
+;; ----- Save digest delivery ------
+
+(defn- save-digest-delivery! [user-id org-uuid start]
+  (try
+    (pool/with-pool [conn @db-pool]
+      (user-res/last-digest-at! conn user-id org-uuid start))
+    (catch Exception e
+      (timbre/error e))))
+
 ;; ----- Digest Request Generation -----
 
 (defn digest-request-for
   "Recursive function that, given a JWT token, makes a sequence of HTTP requests to get all posts data for
   each org the user is a team member of, and creates a digest request for each."
+
+  ;; Need to save the sent of the digest in the user resource
+  ([org user-claims start]
+   (when skip-send? ; Save only when the digest is actually being send and not on dry run
+     (digest-delivered! (:user-id user-claims) (:uuid org) start)))
 
   ;; Need to get an org's activity from its activity link
   ([org digest-link jwtoken {:keys [medium start digest-time]} skip-send?]
@@ -62,7 +78,8 @@
 
           ;; Trigger the digest request for the appropriate medium
           :else (let [claims (-> jwtoken jwt/decode :claims (assoc :digest-last-at (oc-time/to-iso (c/from-long start))))]
-                  (d-r/send-trigger! (d-r/->trigger org result claims digest-time) claims medium))))
+                  (d-r/send-trigger! (d-r/->trigger org result claims digest-time) claims medium)
+                  (digest-request-for org claims {:keys [start]}))))
 
       ;; Failed to get activity for the digest
       (timbre/warn "Error requesting:" (:href digest-link) "for:" (d-r/log-token jwtoken)
