@@ -43,7 +43,7 @@
 
 ;; ----- Save digest delivery ------
 
-(defn- save-digest-delivery! [user-id org-uuid start]
+(defn- digest-delivered! [user-id org-uuid start]
   (try
     (pool/with-pool [conn @db-pool]
       (user-res/last-digest-at! conn user-id org-uuid start))
