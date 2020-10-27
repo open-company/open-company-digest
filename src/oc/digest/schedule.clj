@@ -50,11 +50,11 @@
 
 (defun digest-run
 
-  ([conn :guard lib-schema/conn? instant :guard jt/instant?]
-   (digest-run conn instant false))
+  ([conn :guard lib-schema/conn? zoned-timestamp :guard jt/zoned-date-time?]
+   (digest-run conn zoned-timestamp false))
 
-  ([conn :guard lib-schema/conn? instant :guard jt/instant? skip-send?]
-   (let [user-list (user-res/list-users-for-digest conn instant)]
+  ([conn :guard lib-schema/conn? zoned-timestamp :guard jt/zoned-date-time? skip-send?]
+   (let [user-list (user-res/list-users-for-digest conn zoned-timestamp)]
      (if (empty? user-list)
        (timbre/info "No users for this run, skipping run.")
        (digest-run conn user-list skip-send?))))
