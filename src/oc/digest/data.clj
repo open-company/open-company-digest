@@ -12,12 +12,9 @@
     [oc.lib.jwt :as jwt]
     [oc.lib.time :as oc-time]
     [oc.lib.hateoas :as hateoas]
-    [oc.lib.db.pool :as pool]
     [oc.digest.async.digest-request :as d-r]
     [oc.digest.resources.user :as user-res]
     [oc.digest.config :as config]))
-
-(def db-pool (atom false))
 
 ;; ----- Default start time -----
 
@@ -41,15 +38,6 @@
     (oc-time/millis (f/parse oc-time/timestamp-format (:timestamp org-last-digest)))
     (default-start)))
 
-;; ----- Save digest delivery ------
-
-(defn- digest-delivered! [user-id org-uuid start]
-  (try
-    (pool/with-pool [conn @db-pool]
-      (user-res/last-digest-at! conn user-id org-uuid start))
-    (catch Exception e
-      (timbre/error e))))
-
 ;; ----- Digest Request Generation -----
 
 (defn digest-request-for
@@ -68,19 +56,27 @@
         (cond
 
           (empty? following)
-          (timbre/debug "Skipping digest request (no updates, no replies, no new boards) for:" (d-r/log-token jwtoken))
+          (do
+            (timbre/debug "Skipping digest request (no updates, no replies, no new boards) for:" (d-r/log-token jwtoken))
+            false)
 
-          skip-send? (timbre/info "Skipping digest request (dry run) for:" (d-r/log-token jwtoken)
+          skip-send? (do
+                       (timbre/info "Skipping digest request (dry run) for:" (d-r/log-token jwtoken)
                         "with:" (log-response response))
+                       false)
 
           ;; Trigger the digest request for the appropriate medium
-          :else (let [claims (-> jwtoken jwt/decode :claims (assoc :digest-last-at (oc-time/to-iso (c/from-long start))))]
+          :else (let [iso-start (oc-time/to-iso (c/from-long start))
+                      claims (-> jwtoken jwt/decode :claims (assoc :digest-last-at iso-start))]
                   (d-r/send-trigger! (d-r/->trigger org result claims digest-time) claims medium)
-                  (digest-delivered! (:user-id claims) (:uuid org) start))))
+                  ;; Return the UUID of the org
+                  {:org-uuid (:uuid org) :start iso-start})))
 
       ;; Failed to get activity for the digest
-      (timbre/warn "Error requesting:" (:href digest-link) "for:" (d-r/log-token jwtoken)
-                   "status:" (:status response) "body:" (:body response)))))
+      (do
+        (timbre/warn "Error requesting:" (:href digest-link) "for:" (d-r/log-token jwtoken)
+                     "status:" (:status response) "body:" (:body response))
+        false))))
 
   ;; Need to get an org from its item link
   ([org jwtoken {:keys [last] :as params} skip-send?]
@@ -96,8 +92,10 @@
                 start (start-for-org (:uuid org) last)
                 digest-link (hateoas/link-for (:links org) "digest" {} {:start start})]
             (digest-request-for org digest-link jwtoken params skip-send?))
-          (timbre/warn "Error requesting:" org-link "for:" (d-r/log-token jwtoken)
-                       "status:" (:status response) "body:" (:body response)))))
+          (do
+            (timbre/warn "Error requesting:" org-link "for:" (d-r/log-token jwtoken)
+                         "status:" (:status response) "body:" (:body response))
+            false))))
     (timbre/error "No org link for org:" org)))
 
   ;; Need to get list of orgs from /
@@ -108,8 +106,11 @@
                                         :accept "application/vnd.collection+vnd.open-company.org+json;version=1"}})]
     (if (success? response)
       (let [orgs (-> response :body json/parse-string keywordize-keys :collection :items)]
-        ;; TBD serial for now, think through if we want this parallel
-        (doseq [org orgs] (digest-request-for org jwtoken params skip-send?))
-        true)
-      (timbre/warn "Error requesting:" config/storage-server-url "for:" (d-r/log-token jwtoken)
-        "status:" (:status response) "body:" (:body response))))))
+        ;; Do not parallelize: we need the returning list of orgs to keep track of the sent digest by user
+        (for [org orgs]
+          (digest-request-for org jwtoken params skip-send?)))
+      (do
+        (timbre/warn "Error requesting:" config/storage-server-url "for:" (d-r/log-token jwtoken)
+                     "status:" (:status response) "body:" (:body response))
+        ;; Return empty vec since no digest was actually sent
+        [])))))

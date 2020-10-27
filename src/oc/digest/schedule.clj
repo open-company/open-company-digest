@@ -16,10 +16,15 @@
             [tick.schedule :as schedule]
             [oc.lib.db.pool :as pool]
             [oc.lib.time :as oc-time]
+            [oc.lib.schema :as lib-schema]
             [clj-time.core :as t]
             [oc.digest.resources.user :as user-res]
             [oc.digest.data :as data])
   (:gen-class))
+
+(def DigestSent
+  {:org-uuid lib-schema/UniqueID
+   :start lib-schema/ISO8601})
 
 ;; ----- State -----
 
@@ -29,13 +34,19 @@
 
 ;; ----- Digest Request Generation -----
 
-(defn- digest-for [user skip-send?]
-  (let [medium  :email] ;; Hardcode email digest for everybody (or (keyword (:digest-medium user)) :email)]
-    (try
-      (data/digest-request-for (:jwtoken user) {:medium medium :last (:latest-digest-deliveries user) :digest-time (or (:digest-time user) :morning)} skip-send?)
-      (catch Exception e
-        (timbre/warn "Digest failed for user:" user)
-        (timbre/error e)))))
+(defn- digest-for [conn user skip-send?]
+  ;; FIXME: this is non optimal since if one digest fails none are saved. If user A has org 1 and 2, we send out digest for org 1 and we have an error while
+  ;; sending to org 2. We don't save the last time we sent even for org 1.
+  (try
+    (let [medium  :email ;; Hardcode email digest for everybody (or (keyword (:digest-medium user)) :email)]
+          digest-sent-list (data/digest-request-for (:jwtoken user) {:medium medium :last (:latest-digest-deliveries user) :digest-time (or (:digest-time user) :morning)} skip-send?)]
+      (doseq [sent-map digest-sent-list
+              :when (and sent-map
+                         (lib-schema/valid? DigestSent sent-map))]
+        (user-res/last-digest-at! conn (:user-id user) (:org-uuid sent-map) (:start sent-map))))
+    (catch Exception e
+      (timbre/warn "Digest failed for user:" user)
+      (timbre/error e))))
 
 (defun digest-run
 
@@ -45,13 +56,13 @@
   (let [user-list (user-res/list-users-for-digest conn instant)]
     (if (empty? user-list)
       (timbre/info "No users for this run, skipping run.")
-      (digest-run user-list skip-send?))))
+      (digest-run conn user-list skip-send?))))
 
-  ([user-list :guard sequential?] (digest-run user-list false))
+  ([conn user-list :guard sequential?] (digest-run conn user-list false))
 
-  ([user-list :guard sequential? skip-send?]
+  ([conn user-list :guard sequential? skip-send?]
   (timbre/info "Initiating digest run for" (count user-list) "users...")
-  (doall (pmap #(digest-for % skip-send?) user-list))
+  (doall (pmap #(digest-for conn % skip-send?) user-list))
   (timbre/info "Done with digest run for" (count user-list) "users.")))
 
 ;; ----- Scheduled Fns -----
