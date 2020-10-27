@@ -50,20 +50,22 @@
 
 (defun digest-run
 
-  ([conn :guard map? instant] (digest-run conn instant false))
+  ([conn :guard lib-schema/conn? instant :guard jt/instant?]
+   (digest-run conn instant false))
 
-  ([conn :guard map? instant skip-send?]
-  (let [user-list (user-res/list-users-for-digest conn instant)]
-    (if (empty? user-list)
-      (timbre/info "No users for this run, skipping run.")
-      (digest-run conn user-list skip-send?))))
+  ([conn :guard lib-schema/conn? instant :guard jt/instant? skip-send?]
+   (let [user-list (user-res/list-users-for-digest conn instant)]
+     (if (empty? user-list)
+       (timbre/info "No users for this run, skipping run.")
+       (digest-run conn user-list skip-send?))))
 
-  ([conn user-list :guard sequential?] (digest-run conn user-list false))
+  ([conn :guard lib-schema/conn? :guard map? user-list :guard sequential?]
+   (digest-run conn user-list false))
 
-  ([conn user-list :guard sequential? skip-send?]
-  (timbre/info "Initiating digest run for" (count user-list) "users...")
-  (doall (pmap #(digest-for conn % skip-send?) user-list))
-  (timbre/info "Done with digest run for" (count user-list) "users.")))
+  ([conn :guard lib-schema/conn? user-list :guard sequential? skip-send?]
+   (timbre/info "Initiating digest run for" (count user-list) "users...")
+   (doall (pmap #(digest-for conn % skip-send?) user-list))
+   (timbre/info "Done with digest run for" (count user-list) "users.")))
 
 ;; ----- Scheduled Fns -----
 
