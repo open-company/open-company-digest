@@ -110,12 +110,18 @@
 
 ;; ----- Utility Functions -----
 
+(defn log-latest-deliveries [claims]
+  (when-let [orgs (:latest-digest-deliveries claims)]
+    (str "latest deliveries: "
+         (clojure.string/join ", " (for [o orgs]
+                                     (str "org " (:org-uuid o) " t: " (:timestamp o)))))))
+
 (defn log-token [jwtoken]
   (let [claims (:claims (jwt/decode jwtoken))]
-    (str "user-id " (:user-id claims) " email " (:email claims))))
+    (str "user-id " (:user-id claims) " email " (:email claims) (log-latest-deliveries claims))))
 
 (defn log-claims [claims]
-  (str "user-id " (:user-id claims) " email " (:email claims)))
+  (str "user-id " (:user-id claims) " email " (:email claims) (log-latest-deliveries claims)))
 
 ;; ----- Response → Digest -----
 
