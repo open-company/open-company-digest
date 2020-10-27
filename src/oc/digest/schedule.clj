@@ -59,7 +59,7 @@
        (timbre/info "No users for this run, skipping run.")
        (digest-run conn user-list skip-send?))))
 
-  ([conn :guard lib-schema/conn? :guard map? user-list :guard sequential?]
+  ([conn :guard lib-schema/conn? user-list :guard sequential?]
    (digest-run conn user-list false))
 
   ([conn :guard lib-schema/conn? user-list :guard sequential? skip-send?]
