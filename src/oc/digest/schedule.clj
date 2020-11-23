@@ -39,7 +39,11 @@
   ;; sending to org 2. We don't save the last time we sent even for org 1.
   (try
     (let [medium  :email ;; Hardcode email digest for everybody (or (keyword (:digest-medium user)) :email)]
-          digest-sent-list (data/digest-request-for (:jwtoken user) {:medium medium :last (:latest-digest-deliveries user) :digest-time (or (:digest-time user) :morning)} skip-send?)]
+          digest-sent-list (data/digest-request-for (:jwtoken user) {:medium medium
+                                                                     :last (:latest-digest-deliveries user)
+                                                                     :digest-time (or (:digest-time user) :morning)
+                                                                     :digest-for-teams (:digest-for-teams user)}
+                                                    skip-send?)]
       (doseq [sent-map digest-sent-list
               :when (and sent-map
                          (lib-schema/valid? DigestSent sent-map))]
@@ -78,7 +82,8 @@
   (when (new-tick? instant)
     (timbre/info "New digest run initiated with tick:" instant)
     (try
-      (pool/with-pool [conn @db-pool] (digest-run conn instant))
+      (pool/with-pool [conn @db-pool]
+        (digest-run conn instant))
       (catch Exception e
         (timbre/error e)))))
 

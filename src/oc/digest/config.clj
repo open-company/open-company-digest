@@ -1,6 +1,7 @@
 (ns oc.digest.config
   "Namespace for the configuration parameters."
-  (:require [environ.core :refer (env)]))
+  (:require [environ.core :refer (env)]
+            [clojure.string :as clj-str]))
 
 (defn- bool
   "Handle the fact that we may have true/false strings, when we want booleans."
@@ -64,3 +65,11 @@
 
 (defonce cookie-prefix (or (env :cookie-prefix) (str host "-")))
 (defonce passphrase (env :open-company-auth-passphrase))
+
+;; ----- Allowed digest times -----
+
+(defn- times-env [env-key default]
+  (mapv keyword (clj-str/split (or (env env-key) default) #",")))
+
+(defonce digest-times (times-env :digest-times "700"))
+(defonce premium-digest-times (times-env :premium-digest-times "700,1200,1700"))

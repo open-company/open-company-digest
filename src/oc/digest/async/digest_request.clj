@@ -131,7 +131,7 @@
   (str (s/join "/" [config/ui-server-url org-slug slug])))
 
 (defn- board-url [org-slug board-slug]
-  (section-url org-slug board-url))
+  (section-url org-slug board-slug))
 
 (defn- post-url [org-slug board-slug uuid id-token disallow-secure-links]
   (str (s/join "/" [(board-url org-slug board-slug) "post" uuid])
@@ -174,9 +174,6 @@
   (map #(post org-slug claims %) posts))
 
 ;;  -- Boards --
-
-(defn- board-url [org-slug board-slug]
-  (str (s/join "/" [config/ui-server-url org-slug board-slug])))
 
 (defn- board [org-slug board]
   (-> board
@@ -268,7 +265,7 @@
 
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id
                   content-visibility :content-visibility
-                  {light-brand-color :light :as brand-color} :brand-color :as org}
+                  {light-brand-color :light} :brand-color :as org}
                  {:keys [following replies new-boards]}
                  claims
                  digest-time]

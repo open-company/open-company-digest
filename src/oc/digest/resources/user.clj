@@ -1,8 +1,8 @@
 (ns oc.digest.resources.user
   "Enumerate users stored in RethinkDB and generate JWTokens."
   (:require [defun.core :refer (defun defun-)]
-            [if-let.core :refer (when-let*)]
             [schema.core :as schema]
+            [clojure.set :as clj-set]
             [taoensso.timbre :as timbre]
             [clj-time.core :as t]
             [clj-time.format :as format]
@@ -35,6 +35,38 @@
 
 ;; ----- TimeZone gymnastics -----
 
+(defn- adjust-digest-times [digest-delivery-map user premium-teams]
+  (let [premium-team? ((set premium-teams) (:team-id digest-delivery-map))
+        allowed-times (if premium-team?
+                        config/premium-digest-times
+                        config/digest-times)]
+    (update digest-delivery-map :digest-times #(clj-set/intersection (set %) (set allowed-times)))))
+
+(defn- time-for-tz [instant time-zone]
+  (jt/with-zone-same-instant instant time-zone))
+
+(defn- time-for-time-zone [instant time-zone]
+  (let [;; This schedule tick time in the user's local time zone
+        time-for-tz (time-for-tz instant time-zone)
+        ;; Of the possible digest times, those that we allow for sending digests
+        digest-times-int (mapv #(-> % name Integer. (/ 100) jt/local-time) config/premium-digest-times)
+        ;; Possible digest times in local time-zone
+        local-digest-times-for-tz (map #(jt/adjust (jt/with-zone (jt/zoned-date-time) time-zone) %) digest-times-int)
+        ;; The delta in minutes between schedule tick time and digest in the TZ
+        time-deltas (map #(jt/time-between time-for-tz % :minutes) local-digest-times-for-tz)
+        ;; +/-24h is same as 0h, we don't care about being a day ahead or behind UTC
+        adjusted-deltas (map #(if (or (<= % (* -1 day-fix)) (>= % day-fix))
+                                (- (Math/abs %) day-fix) ; Remove the day ahead or behind
+                                %) time-deltas)
+        ;; Is it 0 mins from a digest local time, or it's in less than 59m from now?
+        run-on-time (mapv #(and (or (zero? %) (pos? %)) (< % 59)) adjusted-deltas)]
+    (timbre/debug "Digest times for time-zone" time-zone ":" (vec local-digest-times-for-tz))
+    (timbre/debug "Minutes between now and digest times:" (vec adjusted-deltas))
+    ;; Is it 0 mins from a digest local time, or it's in less than 59m from now?
+    (some #(when (get run-on-time %)
+             (get config/premium-digest-times %))
+          (range (count config/premium-digest-times)))))
+
 (defn now-for-tz
   "
   Timezone hell....
@@ -44,55 +76,53 @@
   hours offset from UTC).
   "
 
-  [instant user]
-  (let [user-tz (or (:timezone user) default-tz)
-        ;; This schedule tick time in the user's local time zone
-        time-for-user (jt/with-zone-same-instant instant user-tz)
-        ;; Transform the delivery times in a vector to keep the order
-        times-vec (vec (:digest-delivery user))
-        ;; Of the possible digest times, those that this user selected for themself
-        user-digest-times (mapv #(jt/local-time (/ (Integer. %) 100)) times-vec)
-        ;; Possible digest times in local time for the user
-        local-digest-times-for-user (map #(jt/adjust (jt/with-zone (jt/zoned-date-time) user-tz) %) user-digest-times)
-        ;; The delta in minutes between schedule tick time and digest in the users TZ
-        time-deltas (map #(jt/time-between time-for-user % :minutes) local-digest-times-for-user)
-        ;; +/-24h is same as 0h, we don't care about being a day ahead or behind UTC
-        adjusted-deltas (map #(if (or (<= % (* -1 day-fix)) (>= % day-fix))
-                                (- (Math/abs %) day-fix) ; Remove the day ahead or behind
-                                %) time-deltas)
-        ;; Is it 0 mins from a digest local time, or it's in less than 59m from now?
-        run-on-time (mapv #(and (or (zero? %) (pos? %)) (< % 59)) adjusted-deltas)
-        time? (some #(when (get run-on-time %) (Integer. (get times-vec %))) (range (count times-vec)))
-        digest-time (when time?
-                      (cond (> time? 1600) ;; After 17:59 is evening
-                            :evening
-                            (> time? 1100) ;; after 11:59 is afternoon
-                            :afternoon
-                            :else ;; all the rest is morning
-                            :morning))]
-    (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" time-for-user)
-    (timbre/debug "Digest times for user" (:email user) ":" (vec local-digest-times-for-user))
-    (timbre/debug "Minutes between now and digest time for for user" (:email user) ":" (vec adjusted-deltas))
-    (timbre/debug "Digest now for user" (:email user) "?" time? "->" digest-time)
-  (assoc user
-         :now? time?
-         :digest-time digest-time)))
+  [conn instant user]
+  (let [;; The user timezone
+        user-tz (or (:timezone user) default-tz)
+        ;; Triggers for user timezone
+        running-time (time-for-time-zone instant user-tz)
+        ;; Times keywords
+        digest-time (case running-time  ;; After 17:59 is evening
+                      :1700 :evening
+                      :1200 :afternoon
+                      :700 :morning)]
+    (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" (time-for-tz instant user-tz) ".")
+    (when running-time
+      (timbre/debug "Running digest for:" (name digest-time) (when running-time (str "(" (name running-time) ")"))))
+    (when running-time
+      (let [;; Get the premium teams for the current user
+            premium-teams (jwt/premium-teams conn (:user-id user))
+            ;; Filter out times that are not allowed if not on premium
+            teams-delivery-map (map #(adjust-digest-times % user premium-teams)
+                                    (:digest-delivery user))
+            ;; Filter only the teams that have the current time set
+            filtered-teams (remove nil?
+                                   (map (fn [dtm] (when ((set (:digest-times dtm)) running-time)
+                                                    (:team-id dtm)))
+                                        teams-delivery-map))]
+        (when (seq filtered-teams)
+          (timbre/debug "Digest now for user" (:email user) "?" running-time "->" digest-time)
+          (assoc user
+                 :now? running-time
+                 :digest-for-teams filtered-teams
+                 :digest-time digest-time))))))
 
 ;; ----- Prep raw user for digest request -----
 
-(defn- with-jwtoken [conn user-props]
-  (let [token (-> user-props
-                ((partial apply dissoc) not-for-jwt)
-                (merge for-jwt)
-                (assoc :expire (format/unparse (format/formatters :date-time) (t/plus (t/now) (t/hours 1))))
-                (assoc :name (jwt/name-for user-props))
-                (assoc :admin (jwt/admin-of conn (:user-id user-props)))
-                (assoc :slack-bots (jwt/bots-for conn user-props))
-                (jwt/generate config/passphrase))
-        jwtoken (if (jwt/valid? token config/passphrase) ; sanity check
+(defn- with-jwtoken [conn user-for-jwt]
+  (let [token (-> user-for-jwt
+                  ((partial apply dissoc) not-for-jwt)
+                  (merge for-jwt)
+                  (assoc :expire (format/unparse (format/formatters :date-time) (t/plus (t/now) (t/hours 1))))
+                  (assoc :name (jwt/name-for user-for-jwt))
+                  (assoc :admin (jwt/admin-of conn (:user-id user-for-jwt)))
+                  (assoc :slack-bots (jwt/bots-for conn user-for-jwt))
+                  (jwt/generate config/passphrase))
+        jwtoken (if (and (jwt/valid? token config/passphrase)
+                         (not (jwt/refresh? token))) ; sanity check
                   token
                   "INVALID JWTOKEN")] ; insane
-    (assoc user-props :jwtoken jwtoken)))
+    (assoc user-for-jwt :jwtoken jwtoken)))
 
 (defun- allowed?
 
@@ -105,7 +135,7 @@
 (defn- for-digest [conn instant users]
   (->> users
     (filter allowed?)
-    (pmap #(now-for-tz instant %))
+    (pmap #(now-for-tz conn instant %))
     (filter :now?)
     (pmap #(with-jwtoken conn %))))
 
@@ -136,6 +166,6 @@
 
   (require '[oc.digest.resources.user :as user] :reload)
 
-  (user-res/list-users-for-digest conn (jt/zoned-date-time))
+  (user/list-users-for-digest conn (jt/zoned-date-time))
 
 )
