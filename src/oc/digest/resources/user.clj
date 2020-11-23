@@ -35,7 +35,7 @@
 
 ;; ----- TimeZone gymnastics -----
 
-(defn- adjust-digest-times [digest-delivery-map user premium-teams]
+(defn- adjust-digest-times [digest-delivery-map premium-teams]
   (let [premium-team? ((set premium-teams) (:team-id digest-delivery-map))
         allowed-times (if premium-team?
                         config/premium-digest-times
@@ -47,13 +47,13 @@
 
 (defn- time-for-time-zone [instant time-zone]
   (let [;; This schedule tick time in the user's local time zone
-        time-for-tz (time-for-tz instant time-zone)
+        tz-time (time-for-tz instant time-zone)
         ;; Of the possible digest times, those that we allow for sending digests
         digest-times-int (mapv #(-> % name Integer. (/ 100) jt/local-time) config/premium-digest-times)
         ;; Possible digest times in local time-zone
         local-digest-times-for-tz (map #(jt/adjust (jt/with-zone (jt/zoned-date-time) time-zone) %) digest-times-int)
         ;; The delta in minutes between schedule tick time and digest in the TZ
-        time-deltas (map #(jt/time-between time-for-tz % :minutes) local-digest-times-for-tz)
+        time-deltas (map #(jt/time-between tz-time % :minutes) local-digest-times-for-tz)
         ;; +/-24h is same as 0h, we don't care about being a day ahead or behind UTC
         adjusted-deltas (map #(if (or (<= % (* -1 day-fix)) (>= % day-fix))
                                 (- (Math/abs %) day-fix) ; Remove the day ahead or behind
@@ -93,7 +93,7 @@
       (let [;; Get the premium teams for the current user
             premium-teams (jwt/premium-teams conn (:user-id user))
             ;; Filter out times that are not allowed if not on premium
-            teams-delivery-map (map #(adjust-digest-times % user premium-teams)
+            teams-delivery-map (map #(adjust-digest-times % premium-teams)
                                     (:digest-delivery user))
             ;; Filter only the teams that have the current time set
             filtered-teams (remove nil?
