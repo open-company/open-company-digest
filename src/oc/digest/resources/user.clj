@@ -85,7 +85,7 @@
           running-time (time-for-time-zone instant user-tz)]
       (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" (time-for-tz instant user-tz) ".")
       (when running-time
-        (let [running-minutes (Integer. running-time)
+        (let [running-minutes (Integer. (name running-time))
               ;; Times keywords
               digest-time (cond   ;; After 17:59 is evening
                             (<= running-minutes 1100)     :morning
