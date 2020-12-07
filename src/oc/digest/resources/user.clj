@@ -80,17 +80,16 @@
   (let [;; The user timezone
         user-tz (or (:timezone user) default-tz)
         ;; Triggers for user timezone
-        running-time (time-for-time-zone instant user-tz)
-        ;; Times keywords
-        digest-time (case running-time  ;; After 17:59 is evening
-                      :1700 :evening
-                      :1200 :afternoon
-                      :700 :morning)]
+        running-time (time-for-time-zone instant user-tz)]
     (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" (time-for-tz instant user-tz) ".")
     (when running-time
-      (timbre/debug "Running digest for:" (name digest-time) (when running-time (str "(" (name running-time) ")"))))
-    (when running-time
-      (let [;; Get the premium teams for the current user
+      (let [running-minutes (Integer. running-time)
+            ;; Times keywords
+            digest-time (cond   ;; After 17:59 is evening
+                          (<= running-minutes 1100)     :morning
+                          (< 1100 running-minutes 1600) :afternoon
+                          (>= running-minutes 1600)     :evening)
+            ;; Get the premium teams for the current user
             premium-teams (jwt/premium-teams conn (:user-id user))
             ;; Filter out times that are not allowed if not on premium
             teams-delivery-map (map #(adjust-digest-times % premium-teams)
@@ -100,6 +99,7 @@
                                    (map (fn [dtm] (when ((set (:digest-times dtm)) running-time)
                                                     (:team-id dtm)))
                                         teams-delivery-map))]
+        (timbre/debug "Running digest for:" (name digest-time) (when running-time (str "(" (name running-time) ")")))
         (when (seq filtered-teams)
           (timbre/debug "Digest now for user" (:email user) "?" running-time "->" digest-time)
           (assoc user
