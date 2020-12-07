@@ -90,7 +90,7 @@
 ;; ----- Scheduler Component -----
 
 ;; (defn- top-of-the-hour [] (jt/plus (jt/truncate-to (jt/zoned-date-time) :hours) (jt/hours 1)))
-(defn- top-of-the-hour [] (jt/plus (jt/truncate-to (jt/zoned-date-time) :minutes) (jt/hours 5)))
+(defn- top-of-the-hour [] (jt/plus (jt/truncate-to (jt/zoned-date-time) :minutes) (jt/minutes 5)))
 
 ;; (def hourly-timeline (timeline/timeline (timeline/periodic-seq (top-of-the-hour) (tick/hours 1)))) ; every hour
 (def hourly-timeline (timeline/timeline (timeline/periodic-seq (top-of-the-hour) (tick/minutes 5)))) ; every hour
