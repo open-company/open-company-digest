@@ -7,6 +7,7 @@
             [clj-time.core :as t]
             [clj-time.format :as format]
             [java-time :as jt]
+            [oc.lib.sentry.core :as sentry]
             [oc.lib.schema :as lib-schema]
             [oc.lib.db.common :as db-common]
             [oc.lib.jwt :as jwt]
@@ -77,52 +78,60 @@
   "
 
   [conn instant user]
-  (let [;; The user timezone
-        user-tz (or (:timezone user) default-tz)
-        ;; Triggers for user timezone
-        running-time (time-for-time-zone instant user-tz)]
-    (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" (time-for-tz instant user-tz) ".")
-    (when running-time
-      (let [running-minutes (Integer. running-time)
-            ;; Times keywords
-            digest-time (cond   ;; After 17:59 is evening
-                          (<= running-minutes 1100)     :morning
-                          (< 1100 running-minutes 1600) :afternoon
-                          (>= running-minutes 1600)     :evening)
-            ;; Get the premium teams for the current user
-            premium-teams (jwt/premium-teams conn (:user-id user))
-            ;; Filter out times that are not allowed if not on premium
-            teams-delivery-map (map #(adjust-digest-times % premium-teams)
-                                    (:digest-delivery user))
-            ;; Filter only the teams that have the current time set
-            filtered-teams (remove nil?
-                                   (map (fn [dtm] (when ((set (:digest-times dtm)) running-time)
-                                                    (:team-id dtm)))
-                                        teams-delivery-map))]
-        (timbre/debug "Running digest for:" (name digest-time) (when running-time (str "(" (name running-time) ")")))
-        (when (seq filtered-teams)
-          (timbre/debug "Digest now for user" (:email user) "?" running-time "->" digest-time)
-          (assoc user
-                 :now? running-time
-                 :digest-for-teams filtered-teams
-                 :digest-time digest-time))))))
+  (try
+    (let [;; The user timezone
+          user-tz (or (:timezone user) default-tz)
+          ;; Triggers for user timezone
+          running-time (time-for-time-zone instant user-tz)]
+      (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" (time-for-tz instant user-tz) ".")
+      (when running-time
+        (let [running-minutes (Integer. running-time)
+              ;; Times keywords
+              digest-time (cond   ;; After 17:59 is evening
+                            (<= running-minutes 1100)     :morning
+                            (< 1100 running-minutes 1600) :afternoon
+                            (>= running-minutes 1600)     :evening)
+              ;; Get the premium teams for the current user
+              premium-teams (jwt/premium-teams conn (:user-id user))
+              ;; Filter out times that are not allowed if not on premium
+              teams-delivery-map (map #(adjust-digest-times % premium-teams)
+                                      (:digest-delivery user))
+              ;; Filter only the teams that have the current time set
+              filtered-teams (remove nil?
+                                     (map (fn [dtm] (when ((set (:digest-times dtm)) running-time)
+                                                      (:team-id dtm)))
+                                          teams-delivery-map))]
+          (timbre/debug "Running digest for:" (name digest-time) (when running-time (str "(" (name running-time) ")")))
+          (when (seq filtered-teams)
+            (timbre/debug "Digest now for user" (:email user) "?" running-time "->" digest-time)
+            (assoc user
+                   :now? running-time
+                   :digest-for-teams filtered-teams
+                   :digest-time digest-time)))))
+    (catch Exception e
+      (timbre/warn e)
+      (sentry/capture e))))
 
 ;; ----- Prep raw user for digest request -----
 
 (defn- with-jwtoken [conn user-for-jwt]
-  (let [token (-> user-for-jwt
-                  ((partial apply dissoc) not-for-jwt)
-                  (merge for-jwt)
-                  (assoc :expire (format/unparse (format/formatters :date-time) (t/plus (t/now) (t/hours 1))))
-                  (assoc :name (jwt/name-for user-for-jwt))
-                  (assoc :admin (jwt/admin-of conn (:user-id user-for-jwt)))
-                  (assoc :slack-bots (jwt/bots-for conn user-for-jwt))
-                  (jwt/generate config/passphrase))
-        jwtoken (if (and (jwt/valid? token config/passphrase)
-                         (not (jwt/refresh? token))) ; sanity check
-                  token
-                  "INVALID JWTOKEN")] ; insane
-    (assoc user-for-jwt :jwtoken jwtoken)))
+  (try
+    (let [token (-> user-for-jwt
+                    ((partial apply dissoc) not-for-jwt)
+                    (merge for-jwt)
+                    (assoc :expire (format/unparse (format/formatters :date-time) (t/plus (t/now) (t/hours 1))))
+                    (assoc :name (jwt/name-for user-for-jwt))
+                    (assoc :admin (jwt/admin-of conn (:user-id user-for-jwt)))
+                    (assoc :slack-bots (jwt/bots-for conn user-for-jwt))
+                    (jwt/generate config/passphrase))
+          jwtoken (if (and (jwt/valid? token config/passphrase)
+                           (not (jwt/refresh? token))) ; sanity check
+                    token
+                    "INVALID JWTOKEN")] ; insane
+      (assoc user-for-jwt :jwtoken jwtoken))
+    (catch Exception e
+      (timbre/warn e)
+      (sentry/capture e))))
 
 (defun- allowed?
 
