@@ -15,7 +15,7 @@
 
 (def user-props [:user-id :teams :email :first-name :last-name :avatar-url
                  :digest-medium :timezone :digest-delivery :latest-digest-deliveries
-                 :status :slack-users])
+                 :status :slack-users :premium-teams])
 
 (def not-for-jwt [:digest-medium :status :digest-delivery :latest-digest-deliveries])
 
@@ -38,10 +38,12 @@
 
 (defn- adjust-digest-times [digest-delivery-map premium-teams]
   (let [premium-team? ((set premium-teams) (:team-id digest-delivery-map))
+        user-times (mapv keyword (:digest-times digest-delivery-map))
         allowed-times (if premium-team?
                         config/premium-digest-times
-                        config/digest-times)]
-    (update digest-delivery-map :digest-times #(clj-set/intersection (set %) (set allowed-times)))))
+                        config/digest-times)
+        updated-times (clj-set/intersection (set user-times) (set allowed-times))]
+    (assoc digest-delivery-map :digest-times updated-times)))
 
 (defn- time-for-tz [instant time-zone]
   (jt/with-zone-same-instant instant time-zone))
@@ -60,7 +62,7 @@
                                 (- (Math/abs %) day-fix) ; Remove the day ahead or behind
                                 %) time-deltas)
         ;; Is it 0 mins from a digest local time, or it's in less than 59m from now?
-        run-on-time (mapv #(and (or (zero? %) (pos? %)) (< % 59)) adjusted-deltas)]
+        run-on-time (mapv #(<= 0 % 59) adjusted-deltas)]
     (timbre/debug "Digest times for time-zone" time-zone ":" (vec local-digest-times-for-tz))
     (timbre/debug "Minutes between now and digest times:" (vec adjusted-deltas))
     ;; Is it 0 mins from a digest local time, or it's in less than 59m from now?
@@ -83,7 +85,7 @@
           user-tz (or (:timezone user) default-tz)
           ;; Triggers for user timezone
           running-time (time-for-time-zone instant user-tz)]
-      (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" (time-for-tz instant user-tz) ".")
+      (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" (time-for-tz instant user-tz) ". Running time" running-time)
       (when running-time
         (let [running-minutes (Integer. (name running-time))
               ;; Times keywords
@@ -102,12 +104,15 @@
                                                       (:team-id dtm)))
                                           teams-delivery-map))]
           (timbre/debug "Running digest for:" (name digest-time) (when running-time (str "(" (name running-time) ")")))
-          (when (seq filtered-teams)
-            (timbre/debug "Digest now for user" (:email user) "?" running-time "->" digest-time)
-            (assoc user
-                   :now? running-time
-                   :digest-for-teams filtered-teams
-                   :digest-time digest-time)))))
+          (if (seq filtered-teams)
+            (do
+              (timbre/debug "Digest now for user" (:email user) "?" running-time "->" digest-time)
+              (assoc user
+                    :now? running-time
+                    :digest-for-teams filtered-teams
+                    :premium-teams premium-teams
+                    :digest-time digest-time))
+            (timbre/debug "No teams for user")))))
     (catch Exception e
       (timbre/warn e)
       (sentry/capture e))))
