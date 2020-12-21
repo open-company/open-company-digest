@@ -11,6 +11,7 @@
     [cheshire.core :as json]
     [oc.lib.jwt :as jwt]
     [oc.lib.time :as oc-time]
+    [oc.lib.sentry.core :as sentry]
     [oc.lib.hateoas :as hateoas]
     [oc.digest.async.digest-request :as d-r]
     [oc.digest.config :as config]))
@@ -36,6 +37,15 @@
     (oc-time/millis (f/parse oc-time/timestamp-format (:timestamp org-last-digest)))
     (default-start)))
 
+(defn- req [method url headers]
+  (try
+    (method url headers)
+    (catch Exception e
+      (timbre/warn e)
+      (sentry/capture {:throwable e :extra {:href url
+                                            :status (:status e)
+                                            :accept (:accept headers)}}))))
+
 ;; ----- Digest Request Generation -----
 
 (defn digest-request-for
@@ -46,8 +56,10 @@
   ([org digest-link jwtoken {:keys [medium start digest-time digest-for-teams]} skip-send?]
    (timbre/debug "Retrieving:" (str config/storage-server-url (:href digest-link)) "for:" (d-r/log-token jwtoken))
    (let [;; Retrieve activity data for the digest
-         response (httpc/get (str config/storage-server-url (:href digest-link)) {:headers {:authorization (str "Bearer " jwtoken)
-                                                                                            :accept (:accept digest-link)}})]
+         response (req httpc/get
+                       (str config/storage-server-url (:href digest-link))
+                       {:headers {:authorization (str "Bearer " jwtoken)
+                                  :accept (:accept digest-link)}})]
      (timbre/debug "Loading digest data:" (:href digest-link))
      (if (success? response)
        (let [{:keys [following] :as result} (-> response :body json/parse-string keywordize-keys :collection)]
@@ -82,8 +94,10 @@
              org-url (str config/storage-server-url (:href org-link))]
             (do
               (timbre/debug "Retrieving2:" org-url "for:" (d-r/log-token jwtoken))
-              (let [response (httpc/get org-url {:headers {:authorization (str "Bearer " jwtoken)
-                                                           :accept (:accept org-link)}})]
+              (let [response (req httpc/get
+                                  org-url
+                                  {:headers {:authorization (str "Bearer " jwtoken)
+                                             :accept (:accept org-link)}})]
                 (if (success? response)
                   (let [org (-> response :body json/parse-string keywordize-keys)
                         start (start-for-org (:uuid org) last)
@@ -98,8 +112,10 @@
   ;; Need to get list of orgs from /
   ([jwtoken {:keys [digest-for-teams] :as params} skip-send?]
    (timbre/debug "Retrieving3:" config/storage-server-url "for:" (d-r/log-token jwtoken))
-   (let [response (httpc/get (str config/storage-server-url "/") {:headers {:authorization (str "Bearer " jwtoken)
-                                                                            :accept "application/vnd.collection+vnd.open-company.org+json;version=1"}})]
+   (let [response (req httpc/get
+                       (str config/storage-server-url "/")
+                       {:headers {:authorization (str "Bearer " jwtoken)
+                                  :accept "application/vnd.collection+vnd.open-company.org+json;version=1"}})]
      (if (success? response)
        (let [filter-fn (if (seq digest-for-teams)
                          (partial filterv #((set digest-for-teams) (:team-id %)))
