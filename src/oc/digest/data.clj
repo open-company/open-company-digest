@@ -42,9 +42,11 @@
     (method url headers)
     (catch Exception e
       (timbre/warn e)
-      (sentry/capture {:throwable e :extra {:href url
-                                            :status (:status e)
-                                            :accept (:accept headers)}}))))
+      (sentry/capture {:throwable e
+                       :message (str "HTTP request failed: " (:status e))
+                       :extra {:href url
+                               :status (:status e)
+                               :accept (:accept headers)}}))))
 
 ;; ----- Digest Request Generation -----
 
