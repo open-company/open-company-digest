@@ -7,7 +7,8 @@
   - Tick lib is used for scheduling.
   - Tick deprecated the its schedule/timeline API but has not replaced it yet w/ a new design (Jan 3, 2019)
   "
-  (:require [defun.core :refer (defun)]
+  (:require [clojure.core.async :as async]
+            [defun.core :refer (defun)]
             [taoensso.timbre :as timbre]
             [java-time :as jt]
             [tick.core :as tick]
@@ -68,7 +69,10 @@
 
   ([conn :guard lib-schema/conn? user-list :guard sequential? skip-send?]
    (timbre/info "Initiating digest run for" (count user-list) "users...")
-   (doall (pmap #(digest-for conn % skip-send?) user-list))
+  ;;  (doall (pmap #(digest-for conn % skip-send?) user-list))
+   (doseq [user user-list]
+     (digest-for conn user skip-send?)
+     (async/<!! (async/timeout 100)))
    (timbre/info "Done with digest run for" (count user-list) "users.")))
 
 ;; ----- Scheduled Fns -----
