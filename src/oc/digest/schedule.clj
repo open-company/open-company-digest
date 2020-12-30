@@ -69,10 +69,7 @@
 
   ([conn :guard lib-schema/conn? user-list :guard sequential? skip-send?]
    (timbre/info "Initiating digest run for" (count user-list) "users...")
-  ;;  (doall (pmap #(digest-for conn % skip-send?) user-list))
-   (doseq [user user-list]
-     (digest-for conn user skip-send?)
-     (async/<!! (async/timeout 100)))
+   (doall (map #(digest-for conn % skip-send?) user-list))
    (timbre/info "Done with digest run for" (count user-list) "users.")))
 
 ;; ----- Scheduled Fns -----
