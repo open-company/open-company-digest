@@ -14,7 +14,14 @@ pom.xml.asc
 *.class
 /.lein-*
 /.nrepl-port
-/.calva
+
+.idea/
+.vscode/
+.calva/
+.lsp/
+.clj-kondo/
+.clojure-lsp/
+
 
 .eastwood
 
