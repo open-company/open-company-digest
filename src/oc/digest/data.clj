@@ -26,8 +26,10 @@
 
 ;; ----- Utility Functions -----
 
-(defn- success? [{status :status}]
-  (< 199 status 300))
+(defn- success? [{status :status :as response}]
+  (and response
+       status
+       (< 199 status 300)))
 
 (defn- log-response [response]
   (str "digest of " (count (:following response)) " followed posts, " (count (:replies response)) " replies posts and " (count (:new-boards response)) " new boards."))
