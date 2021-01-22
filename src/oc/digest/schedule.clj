@@ -7,8 +7,7 @@
   - Tick lib is used for scheduling.
   - Tick deprecated the its schedule/timeline API but has not replaced it yet w/ a new design (Jan 3, 2019)
   "
-  (:require [clojure.core.async :as async]
-            [defun.core :refer (defun)]
+  (:require [defun.core :refer (defun)]
             [taoensso.timbre :as timbre]
             [java-time :as jt]
             [tick.core :as tick]
@@ -16,9 +15,8 @@
             [tick.clock :as clock]
             [tick.schedule :as schedule]
             [oc.lib.db.pool :as pool]
-            [oc.lib.time :as oc-time]
             [oc.lib.schema :as lib-schema]
-            [clj-time.core :as t]
+            [oc.digest.config :as c]
             [oc.digest.resources.user :as user-res]
             [oc.digest.data :as data])
   (:gen-class))
@@ -69,7 +67,10 @@
 
   ([conn :guard lib-schema/conn? user-list :guard sequential? skip-send?]
    (timbre/info "Initiating digest run for" (count user-list) "users...")
-   (doall (map #(digest-for conn % skip-send?) user-list))
+   (let [parts (partition c/users-partition-size c/users-partition-size nil user-list)]
+     (doseq [part parts]
+       (doall (map #(digest-for conn % skip-send?) part))
+       (Thread/sleep c/partitions-sleep-ms)))
    (timbre/info "Done with digest run for" (count user-list) "users.")))
 
 ;; ----- Scheduled Fns -----
