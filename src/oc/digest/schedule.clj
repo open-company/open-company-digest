@@ -15,6 +15,7 @@
             [tick.clock :as clock]
             [tick.schedule :as schedule]
             [oc.lib.db.pool :as pool]
+            [oc.lib.sentry.core :as sentry]
             [oc.lib.schema :as lib-schema]
             [oc.digest.config :as c]
             [oc.digest.resources.user :as user-res]
@@ -33,23 +34,32 @@
 
 ;; ----- Digest Request Generation -----
 
-(defn- digest-for [conn user skip-send?]
-  ;; FIXME: this is non optimal since if one digest fails none are saved. If user A has org 1 and 2, we send out digest for org 1 and we have an error while
-  ;; sending to org 2. We don't save the last time we sent even for org 1.
-  (try
-    (let [medium  :email ;; Hardcode email digest for everybody (or (keyword (:digest-medium user)) :email)]
-          digest-sent-list (data/digest-request-for (:jwtoken user) {:medium medium
-                                                                     :last (:latest-digest-deliveries user)
-                                                                     :digest-time (or (:digest-time user) :morning)
-                                                                     :digest-for-teams (:digest-for-teams user)}
-                                                    skip-send?)]
-      (doseq [sent-map digest-sent-list
-              :when (and sent-map
-                         (lib-schema/valid? DigestSent sent-map))]
-        (user-res/last-digest-at! conn (:user-id user) (:org-uuid sent-map) (:start sent-map))))
-    (catch Exception e
-      (timbre/warn "Digest failed for user:" user)
-      (timbre/error e))))
+(def max-retry 3)
+
+(defn- digest-for
+  ([conn user skip-send?] (digest-for conn user skip-send? 1))
+  ([conn user skip-send? retry]
+   ;; FIXME: this is non optimal since if one digest fails none are saved. If user A has org 1 and 2, we send out digest for org 1 and we have an error while
+   ;; sending to org 2. We don't save the last time we sent even for org 1.
+   (try
+     (let [medium  :email ;; Hardcode email digest for everybody (or (keyword (:digest-medium user)) :email)]
+           digest-sent-list (data/digest-request-for (:jwtoken user) {:medium medium
+                                                                      :last (:latest-digest-deliveries user)
+                                                                      :digest-time (or (:digest-time user) :morning)
+                                                                      :digest-for-teams (:digest-for-teams user)}
+                                                     skip-send?)]
+       (doseq [sent-map digest-sent-list
+               :when (and sent-map
+                          (lib-schema/valid? DigestSent sent-map))]
+         (user-res/last-digest-at! conn (:user-id user) (:org-uuid sent-map) (:start sent-map))))
+     (catch Exception e
+       (timbre/warn "Digest failed for user:" user "(retry " retry ")")
+       (sentry/capture {:throwable e :extra {:retry retry}})
+       ;; Retry if we got an error after 1 second...
+       (when (and (int? retry)
+                  (<= retry max-retry))
+         (Thread/sleep 1000)
+         (digest-for conn user skip-send? (inc retry)))))))
 
 (defun digest-run
 
@@ -67,9 +77,17 @@
 
   ([conn :guard lib-schema/conn? user-list :guard sequential? skip-send?]
    (timbre/info "Initiating digest run for" (count user-list) "users...")
-   (let [parts (partition c/users-partition-size c/users-partition-size nil user-list)]
-     (doseq [part parts]
-       (doall (map #(digest-for conn % skip-send?) part))
+   (let [user-partitions (partition c/users-partition-size c/users-partition-size nil user-list)
+         c (atom 0)]
+     (timbre/info "Splitted list into" (count user-partitions) "partitions of" c/users-partition-size)
+     (doseq [users-list user-partitions]
+       (timbre/info "Running partition" (swap! c inc))
+       (doall
+        (map (fn [user]
+               (timbre/info "Running digest for user" (:user-id user) "...")
+               (digest-for conn user skip-send?)
+               (timbre/info "Done!"))
+         users-list))
        (Thread/sleep c/partitions-sleep-ms)))
    (timbre/info "Done with digest run for" (count user-list) "users.")))
 
