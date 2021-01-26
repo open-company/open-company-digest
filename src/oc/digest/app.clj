@@ -99,7 +99,7 @@
   (cond-> (routes sys)
     c/prod?           api-common/wrap-500 ; important that this is first
     ; important that this is second
-    c/dsn             (sentry/wrap c/sentry-config)
+    true              (sentry/wrap c/sentry-config)
     c/prod?           wrap-with-logger
     true              wrap-params
     true              wrap-cookies
@@ -110,11 +110,7 @@
   [port]
 
   ;; Stuff logged at error level goes to Sentry
-  (if c/dsn
-    (timbre/merge-config!
-      {:level (keyword c/log-level)
-       :appenders {:sentry (sentry/sentry-appender c/sentry-config)}})
-    (timbre/merge-config! {:level (keyword c/log-level)}))
+  (timbre/merge-config! {:level (keyword c/log-level)})
 
   ;; Start the system
   (let [_sys (-> {:sentry c/sentry-config
