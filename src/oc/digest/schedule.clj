@@ -53,13 +53,18 @@
                           (lib-schema/valid? DigestSent sent-map))]
          (user-res/last-digest-at! conn (:user-id user) (:org-uuid sent-map) (:start sent-map))))
      (catch Exception e
-       (timbre/warn "Digest failed for user:" user "(retry " retry ")")
-       (sentry/capture {:throwable e :extra {:retry retry}})
-       ;; Retry if we got an error after 1 second...
-       (when (and (int? retry)
-                  (<= retry max-retry))
-         (Thread/sleep 1000)
-         (digest-for conn user skip-send? (inc retry)))))))
+       (let [err-msg (str "Digest failed for user: " (:user-id user) " (retry " retry ")")]
+        (timbre/warn err-msg)
+        (sentry/capture {:message {:message err-msg}
+                         :throwable e
+                         :extra {:retry retry
+                                 :user-id (:user-id user)
+                                 :user user}})
+        ;; Retry if we got an error after 1 second...
+        (when (and (int? retry)
+                    (<= retry max-retry))
+          (Thread/sleep 1000)
+          (digest-for conn user skip-send? (inc retry))))))))
 
 (defun digest-run
 
