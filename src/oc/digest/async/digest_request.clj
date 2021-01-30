@@ -36,28 +36,6 @@
    :board-uuid lib-schema/UniqueID
    :board-url lib-schema/NonBlankStr})
 
-(def DigestBoard
-  {:uuid lib-schema/NonBlankStr
-   :name lib-schema/NonBlankStr
-   (schema/optional-key :description) (schema/maybe schema/Str)
-   :slug lib-schema/NonBlankStr
-   :author lib-schema/Author
-   :created-at lib-schema/ISO8601
-   :url lib-schema/NonBlankStr
-   :access lib-schema/NonBlankStr})
-
-(def DigestReplies
-  {:url lib-schema/NonBlankStr
-   :comment-count schema/Int
-   :comment-authors [lib-schema/Author]
-   :entry-count schema/Int
-   :replies-label schema/Any})
-
-(def DigestNewBoards
-  {:url lib-schema/NonBlankStr
-   :new-boards-list [DigestBoard]
-   :new-boards-label schema/Any})
-
 (def DigestFollowingList
   {:url lib-schema/NonBlankStr
    :following-list (schema/maybe [DigestPost])})
@@ -81,8 +59,7 @@
    (schema/optional-key :digest-label) [schema/Any]
    (schema/optional-key :digest-subject) schema/Str
    :following DigestFollowingList
-   :replies DigestReplies
-   :new-boards DigestNewBoards})
+   :replies (schema/maybe {(schema/optional-key :url) schema/Str})})
 
 (def EmailTrigger (merge DigestTrigger {
   :email lib-schema/EmailAddress}))
@@ -180,11 +157,6 @@
    (select-keys [:name :slug :access :uuid :description :author :created-at])
    (assoc :url (board-url org-slug (:slug board)))))
 
-(defn- boards-list [org-slug new-boards]
-  {:new-boards-label (oc-text/new-boards-summary-node new-boards (partial board-url org-slug))
-   :new-boards-list (map (partial board org-slug) new-boards)
-   :url (section-url org-slug "topics")})
-
 ;; ----- Digest parts -----
 
 (def digest-date-format (time-format/formatter "MMM d, YYYY"))
@@ -192,7 +164,7 @@
 (defn digest-date []
   (time-format/unparse digest-date-format (time/now)))
 
-(defn- digest-label [claims comment-count digest-time date-string org-slug primary-color]
+(defn- digest-label [claims digest-time date-string org-slug primary-color]
   (let [link-style (if (:hex primary-color)
                      {:style {:color (:hex primary-color)}}
                      {})
@@ -208,9 +180,7 @@
      " and "
      [:a
       (merge {:href (section-url org-slug "activity")} link-style)
-      (if (pos? comment-count)
-        (str comment-count " comment" (when (> comment-count 1) "s"))
-        "comments")]
+      "comments"]
      " on updates you're watching."]))
 
 (defn- digest-subject [digest-time date-string org-name]
@@ -266,7 +236,7 @@
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id
                   content-visibility :content-visibility
                   {light-brand-color :light} :brand-color :as org}
-                 {:keys [following replies new-boards]}
+                 {:keys [following]}
                  claims
                  digest-time]
   (let [fixed-content-visibility (or content-visibility {})
@@ -286,13 +256,11 @@
                       :logo-width (:logo-width org)
                       :logo-height (:logo-height org)})
      (map? light-brand-color) (assoc :org-light-brand-color light-brand-color)
-     true (assoc :digest-label (digest-label fixed-claims (:comment-count replies) digest-time date-string org-slug (:primary light-brand-color)))
+     true (assoc :digest-label (digest-label fixed-claims digest-time date-string org-slug (:primary light-brand-color)))
      true (assoc :digest-subject (digest-subject digest-time date-string org-name))
      true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
                              :url (section-url org-slug "home")})
-     true (assoc :replies (assoc replies :replies-label (oc-text/replies-summary-text replies)
-                                         :url (section-url org-slug "activity")))
-     true (assoc :new-boards (boards-list org-slug new-boards)))))
+     true (assoc :replies {:url (section-url org-slug "activity")}))))
 
 (defn send-trigger! [trigger claims medium]
   (schema/validate DigestTrigger trigger) ; sanity check
