@@ -39,8 +39,6 @@
 (defn- digest-for
   ([conn user skip-send?] (digest-for conn user skip-send? 1))
   ([conn user skip-send? retry]
-   ;; FIXME: this is non optimal since if one digest fails none are saved. If user A has org 1 and 2, we send out digest for org 1 and we have an error while
-   ;; sending to org 2. We don't save the last time we sent even for org 1.
    (try
      (let [medium  :email ;; Hardcode email digest for everybody (or (keyword (:digest-medium user)) :email)]
            digest-sent-list (data/digest-request-for (:jwtoken user) {:medium medium
