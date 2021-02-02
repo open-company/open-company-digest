@@ -83,10 +83,10 @@
   ([conn :guard lib-schema/conn? user-list :guard sequential? skip-send?]
    (timbre/info "Initiating digest run for" (count user-list) "users...")
    (let [user-partitions (partition c/users-partition-size c/users-partition-size nil user-list)
-         c (atom 0)]
+         cnt (atom 0)]
      (timbre/info "Splitted list into" (count user-partitions) "partitions of" c/users-partition-size)
      (doseq [users-list user-partitions]
-       (timbre/info "Running partition" (swap! c inc))
+       (timbre/info "Running partition" (swap! cnt inc) "with" (count users-list) "users")
        (doall
         (map (fn [user]
                (timbre/info "Running digest for user" (:user-id user) "...")
