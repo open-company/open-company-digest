@@ -58,7 +58,7 @@
 
   ;; Need to get an org's activity from its activity link
   ([org digest-link jwtoken {:keys [medium start digest-time digest-for-teams]} skip-send?]
-   (timbre/debug "Retrieving:" (str config/storage-server-url (:href digest-link)) "for:" (d-r/log-token jwtoken))
+   (timbre/debug "Retrieving digest " (:href digest-link) "for:" (d-r/log-token jwtoken))
    (let [;; Retrieve activity data for the digest
          response (req httpc/get
                        (str config/storage-server-url (:href digest-link))
@@ -94,28 +94,14 @@
 
   ;; Need to get an org from its item link
   ([org jwtoken {:keys [last] :as params} skip-send?]
-   (if-let* [org-link (hateoas/link-for (:links org) "item")
-             org-url (str config/storage-server-url (:href org-link))]
-            (do
-              (timbre/debug "Retrieving2:" org-url "for:" (d-r/log-token jwtoken))
-              (let [response (req httpc/get
-                                  org-url
-                                  {:headers {:authorization (str "Bearer " jwtoken)
-                                             :accept (:accept org-link)}})]
-                (if (success? response)
-                  (let [org (-> response :body json/parse-string keywordize-keys)
-                        start (start-for-org (:uuid org) last)
-                        digest-link (hateoas/link-for (:links org) "digest" {} {:start start})]
-                    (digest-request-for org digest-link jwtoken params skip-send?))
-                  (do
-                    (timbre/warn "Error requesting:" org-link "for:" (d-r/log-token jwtoken)
-                                 "status:" (:status response) "body:" (:body response))
-                    false))))
-            (timbre/error "No org link for org:" org)))
+   (if-let* [start (start-for-org (:uuid org) last)
+             digest-link (hateoas/link-for (:links org) "digest" {} {:start start})]
+     (digest-request-for org digest-link jwtoken params skip-send?)
+     (timbre/error "No digest link found for org:" org)))
 
   ;; Need to get list of orgs from /
   ([jwtoken {:keys [digest-for-teams] :as params} skip-send?]
-   (timbre/debug "Retrieving3:" config/storage-server-url "for:" (d-r/log-token jwtoken))
+   (timbre/debug "Retrieving entry-point for:" (d-r/log-token jwtoken))
    (let [response (req httpc/get
                        (str config/storage-server-url "/")
                        {:headers {:authorization (str "Bearer " jwtoken)
