@@ -80,6 +80,7 @@
     "Storage service URL: " c/storage-server-url "\n"
     "Change service URL: " c/change-server-url "\n"
     "Web URL: " c/ui-server-url "\n"
+    "Log level: " c/log-level "\n"
     "Hot-reload: " c/hot-reload "\n"
     "Sentry: " c/dsn "\n"
     "  env: " c/sentry-env "\n"
@@ -110,7 +111,7 @@
   [port]
 
   ;; Stuff logged at error level goes to Sentry
-  (timbre/merge-config! {:level (keyword c/log-level)})
+  (timbre/merge-config! {:min-level (keyword c/log-level)})
 
   ;; Start the system
   (let [_sys (-> {:sentry c/sentry-config
