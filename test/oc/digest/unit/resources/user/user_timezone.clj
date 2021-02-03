@@ -27,7 +27,7 @@
 (facts "About digest invocation in user's timezone"
 
   ;; Turn off debug logging
-  (timbre/merge-config! {:level (keyword :info)})
+  (timbre/merge-config! {:min-level (keyword :info)})
 
   (facts "About EDT (UTC-)"
     (map #(digest-for-user? EDT % EDT) (range 5 10)) => [false false true false false]
@@ -60,8 +60,8 @@
             not-happend (count (filter false? results))]
         (when (and (not= 1 happened) (not= 23 not-happend))
           (timbre/error "Failure for TZ:" zone)
-          (timbre/merge-config! {:level (keyword :debug)})
+          (timbre/merge-config! {:min-level (keyword :debug)})
           (doall (map #(digest-for-user? UTC % zone) (range 0 24)))
-          (timbre/merge-config! {:level (keyword :info)}))
+          (timbre/merge-config! {:min-level (keyword :info)}))
         happened => 1
         not-happend => 23))))
