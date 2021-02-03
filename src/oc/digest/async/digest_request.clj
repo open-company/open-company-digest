@@ -281,4 +281,4 @@
           medium-trigger)
         (timbre/info "Request sent to:" queue "for:" (log-claims claims)))
       ;; Trigger is no good
-      (timbre/warn "Digest request failed with invalid trigger:" trigger "for:" (log-claims claims)))))
+      (timbre/error "Digest request failed with invalid trigger:" trigger "for:" (log-claims claims)))))

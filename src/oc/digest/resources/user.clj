@@ -171,7 +171,7 @@
         (filter :now?)
         (pmap #(with-jwtoken conn %))
         (doall))
-   (timbre/info "Digest batch done")))
+   (timbre/debug "Digest batch done")))
 
 ;; ----- User enumeration -----
 
