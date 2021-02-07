@@ -85,7 +85,7 @@
           user-tz (or (:timezone user) default-tz)
           ;; Triggers for user timezone
           running-time (time-for-time-zone instant user-tz)]
-      (timbre/debug "User" (:email user) "is in TZ:" user-tz "where it is:" (time-for-tz instant user-tz) ". Running time" running-time)
+      (timbre/info "User" (:email user) "is in TZ:" user-tz "where it is:" (time-for-tz instant user-tz) ". Running time" running-time)
       (when running-time
         (let [running-minutes (Integer. (name running-time))
               ;; Times keywords
@@ -106,13 +106,13 @@
           (timbre/debug "Running digest for:" (name digest-time) (when running-time (str "(" (name running-time) ")")))
           (if (seq filtered-teams)
             (do
-              (timbre/debug "Digest now for user" (:email user) "?" running-time "->" digest-time)
+              (timbre/info "Digest now for user" (:email user) "teams-delivery-map" teams-delivery-map "teams:" filtered-teams "?" running-time "->" digest-time)
               (assoc user
                     :now? running-time
                     :digest-for-teams filtered-teams
                     :premium-teams premium-teams
                     :digest-time digest-time))
-            (timbre/debug "No teams for user")))))
+            (timbre/info "No teams for user")))))
     (catch Exception e
       (timbre/warn e)
       (sentry/capture e))))

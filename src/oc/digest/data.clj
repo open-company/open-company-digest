@@ -71,7 +71,7 @@
 
            (empty? following)
            (do
-             (timbre/debug "Skipping digest request (no updates) for:" (d-r/log-token jwtoken))
+             (timbre/info "Skipping digest request (no updates) for:" (d-r/log-token jwtoken))
              false)
 
            skip-send? (do
