@@ -146,13 +146,6 @@
 
   ([_user] false)) ; no digest for you!
 
-(defn- for-digest [conn instant users]
-  (->> users
-    (filter allowed?)
-    (pmap #(now-for-tz conn instant %))
-    (filter :now?)
-    (pmap #(with-jwtoken conn %))))
-
 (defun- for-digest
   ;; If there users are a lot let's brake the list in pieces and insert a delay
   ([conn instant users :guard #(> (count %) config/users-partition-size)]
