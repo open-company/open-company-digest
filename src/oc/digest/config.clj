@@ -74,5 +74,5 @@
 (defonce digest-times (times-env :digest-times "700"))
 (defonce premium-digest-times (times-env :premium-digest-times "700,1200,1700"))
 
-(defonce users-partition-size (Integer/parseInt (or (env :oc-digest-partition-size) "60")))
-(defonce partitions-sleep-ms (Integer/parseInt (or (env :oc-digest-partitions-sleep-ms) "800")))
+(defonce users-partition-size (Integer/parseInt (or (env :oc-digest-partition-size) "30")))
+(defonce partitions-sleep-ms (Integer/parseInt (or (env :oc-digest-partitions-sleep-ms) "3000")))
