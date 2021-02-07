@@ -151,9 +151,9 @@
   ([conn instant users :guard #(> (count %) config/users-partition-size)]
    (let [cnt (atom 0)]
      (doseq [users-part (partition-all config/users-partition-size users)]
-       (timbre/debug "Partition" (swap! cnt inc))
+       (timbre/info "Partition" (swap! cnt inc))
        (for-digest conn instant users-part)
-       (timbre/debug "Partition" @cnt "done.")
+       (timbre/info "Partition" @cnt "done.")
        (Thread/sleep config/partitions-sleep-ms))))
 
   ([conn instant users]
