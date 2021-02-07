@@ -66,6 +66,11 @@
                                   :user-id (:user-id user)
                                   :user user}})))))))
 
+(defn- partition-users-list? [user-list]
+  (and (sequential? user-list)
+       (pos? c/users-partition-size)
+       (> (count user-list) c/users-partition-size)))
+
 (defun digest-run
 
   ([conn :guard lib-schema/conn? zoned-timestamp :guard jt/zoned-date-time?]
@@ -79,6 +84,14 @@
 
   ([conn :guard lib-schema/conn? user-list :guard sequential?]
    (digest-run conn user-list false))
+
+  ([conn :guard lib-schema/conn? user-list :guard partition-users-list? skip-send?]
+   (let [cnt (atom 0)]
+     (doseq [users-part (partition-all c/users-partition-size user-list)]
+       (timbre/info "Partition" (swap! cnt inc))
+       (digest-run conn users-part skip-send?)
+       (timbre/info "Partition" @cnt "done.")
+       (Thread/sleep c/partitions-sleep-ms))))
 
   ([conn :guard lib-schema/conn? user-list :guard sequential? skip-send?]
    (timbre/info "Initiating digest run for" (count user-list) "users...")

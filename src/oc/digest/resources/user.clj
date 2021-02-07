@@ -146,25 +146,12 @@
 
   ([_user] false)) ; no digest for you!
 
-(defun- for-digest
-  ;; If there users are a lot let's brake the list in pieces and insert a delay
-  ([conn instant users :guard #(> (count %) config/users-partition-size)]
-   (let [cnt (atom 0)]
-     (doseq [users-part (partition-all config/users-partition-size users)]
-       (timbre/info "Partition" (swap! cnt inc))
-       (for-digest conn instant users-part)
-       (timbre/info "Partition" @cnt "done.")
-       (Thread/sleep config/partitions-sleep-ms))))
-
-  ([conn instant users]
-   (timbre/info "Digest batch for time " instant "of" (count users) "users")
-   (->> users
-        (filter allowed?)
-        (pmap #(now-for-tz conn instant %))
-        (filter :now?)
-        (pmap #(with-jwtoken conn %))
-        (doall))
-   (timbre/debug "Digest batch done")))
+(defn- for-digest [conn instant users]
+  (->> users
+       (filter allowed?)
+       (pmap #(now-for-tz conn instant %))
+       (filter :now?)
+       (pmap #(with-jwtoken conn %))))
 
 ;; ----- User enumeration -----
 
