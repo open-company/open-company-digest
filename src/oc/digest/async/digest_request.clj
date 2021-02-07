@@ -38,6 +38,7 @@
 
 (def DigestFollowingList
   {:url lib-schema/NonBlankStr
+   :following-footer-label (schema/maybe [schema/Any])
    :following-list (schema/maybe [DigestPost])})
 
 (def DigestTrigger
@@ -164,23 +165,24 @@
 (defn digest-date []
   (time-format/unparse digest-date-format (time/now)))
 
+(defn- link-anchor-for-org [primary-color href content]
+  (let [link-style (some-> {}
+                     primary-color (assoc :style {:color (:hex primary-color)})
+                     true          (assoc :href href))]
+    [:a
+     link-style
+     content]))
+
 (defn- digest-label [claims digest-time date-string org-slug primary-color]
-  (let [link-style (if (:hex primary-color)
-                     {:style {:color (:hex primary-color)}}
-                     {})
-        digest-time-string (when (keyword? digest-time)
+  (let [digest-time-string (when (keyword? digest-time)
                              (str (name digest-time) " "))]
     [:label.digest-label
      (str "Hi " (:short-name claims) ", here's your " digest-time-string "digest for "
           date-string
           ". Check out the latest ")
-     [:a
-      (merge {:href (section-url org-slug "home")} link-style)
-      "updates"]
+     (link-anchor-for-org primary-color (section-url org-slug "home") "updates")
      " and "
-     [:a
-      (merge {:href (section-url org-slug "activity")} link-style)
-      "comments"]
+     (link-anchor-for-org primary-color (section-url org-slug "activity") "comments")
      " on updates you're watching."]))
 
 (defn- digest-subject [digest-time date-string org-name]
@@ -236,7 +238,7 @@
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id
                   content-visibility :content-visibility
                   {light-brand-color :light} :brand-color :as org}
-                 {:keys [following]}
+                 {:keys [following total-following-count]}
                  claims
                  digest-time]
   (let [fixed-content-visibility (or content-visibility {})
@@ -245,7 +247,13 @@
                          (assoc :short-name (lib-user/short-name-for claims))
                          (assoc :org-uuid org-uuid)
                          (assoc :disallow-secure-links (:disallow-secure-links fixed-content-visibility)))
-        date-string (digest-date)]
+        date-string (digest-date)
+        home-url (section-url org-slug "home")
+        rest-following-count (when (and total-following-count
+                                        (seq following))
+                               (- total-following-count (count following)))
+        rest-following-label (when (pos? rest-following-count)
+                               (link-anchor-for-org (:primary light-brand-color) home-url (str "...and " rest-following-count " more.")))]
     (cond-> {:type :digest
              :org-slug org-slug
              :org-name org-name
@@ -258,9 +266,11 @@
      (map? light-brand-color) (assoc :org-light-brand-color light-brand-color)
      true (assoc :digest-label (digest-label fixed-claims digest-time date-string org-slug (:primary light-brand-color)))
      true (assoc :digest-subject (digest-subject digest-time date-string org-name))
-     true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
-                             :url (section-url org-slug "home")})
-     true (assoc :replies {:url (section-url org-slug "activity")}))))
+     true (assoc-in [:following :following-list] (posts-list org-slug following fixed-claims))
+     true (assoc-in [:following :total-following-count] total-following-count)
+     true (assoc-in [:following :footer-label] rest-following-label)
+     true (assoc-in [:following :url] home-url)
+     true (assoc-in [:replies :url] (section-url org-slug "activity")))))
 
 (defn send-trigger! [trigger claims medium]
   (schema/validate DigestTrigger trigger) ; sanity check
