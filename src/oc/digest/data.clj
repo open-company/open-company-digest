@@ -18,11 +18,8 @@
 
 ;; ----- Default start time -----
 
-(defn days-ago-millis [days]
-  (oc-time/millis (t/minus (t/now) (t/days days))))
-
-(defn default-start []
-  (days-ago-millis 1))
+(defn days-ago [days]
+  (oc-time/to-iso (t/minus (oc-time/utc-now) (t/days days))))
 
 ;; ----- Utility Functions -----
 
@@ -36,8 +33,8 @@
 
 (defn- start-for-org [org-id last-digests]
   (if-let [org-last-digest (first (filter #(= org-id (:org-id %)) last-digests))]
-    (oc-time/millis (f/parse oc-time/timestamp-format (:timestamp org-last-digest)))
-    (default-start)))
+    (:timestamp org-last-digest)
+    (days-ago 1)))
 
 (defn- req [method url headers]
   (try
