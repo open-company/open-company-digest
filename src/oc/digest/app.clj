@@ -26,28 +26,30 @@
 (defun- test-digest
 
   ([request :guard map? medium]
-    (let [{:keys [cookies query-params]} request
-          days-param (try
-                       (Integer/parseInt (get query-params "days"))
-                       (catch java.lang.NumberFormatException _ false))
-          start-param (try
-                       (Long. (get query-params "start"))
-                       (catch java.lang.NumberFormatException _ false))
-          start (cond
-                 (and (number? days-param) (pos? days-param))
-                 (data/days-ago-millis days-param)
-                 start-param start-param
-                 :else (data/default-start))]
-      (if-let* [jwtoken (-> cookies (get cookie-name) :value)
-                _valid? (jwt/valid? jwtoken c/passphrase)]
-        (test-digest jwtoken medium start)
-        {:body "An unexpired login with a valid JWT cookie required for test digest request.\n
-                Please refresh your login with the Web UI before making this request." :status 401})))
+   (let [{:keys [cookies query-params]} request
+         start-param (get query-params "start")
+         days-param (try
+                      (Integer/parseInt (get query-params "days"))
+                      (catch java.lang.NumberFormatException _ false))
+         start (cond ;; Use start parameter if present and non blank string
+                     (and (seq start-param)
+                          (string? start-param)) start-param
+                     ;; Use days param instead, if present
+                     (and (number? days-param)
+                          (pos? days-param))     (data/days-ago days-param)
+                     ;; Default to 1 day ago
+                     :else                       (data/days-ago 1))]
+     (if-let* [jwtoken (-> cookies (get cookie-name) :value)
+               _valid? (jwt/valid? jwtoken c/passphrase)]
+       (test-digest jwtoken medium start)
+       {:body (str "An unexpired login with a valid JWT cookie required for test digest request.\n\n"
+                   "Please refresh your login with the Web UI before making this request.")
+        :status 401})))
 
-  ([jwtoken :guard string? _medium :guard #(= % "email") start :guard number?]
-  (if (data/digest-request-for jwtoken {:medium :email :start start} false)
-    {:body (str "Email digest test initiated.") :status 200}
-    {:body "Failed to initiate an email digest test." :status 500}))
+  ([jwtoken :guard string? :email start :guard #(or (nil? %) (string? %))]
+   (if (data/digest-request-for jwtoken {:medium :email :start start} false)
+     {:body (str "Email digest test initiated with start: " start) :status 200}
+     {:body "Failed to initiate an email digest test." :status 500}))
 
   ; ([jwtoken :guard string? _medium :guard #(= % "slack") start :guard number?]
   ; (if-let [digest-request (data/digest-request-for jwtoken {:medium :slack :start start} false)]
@@ -55,7 +57,7 @@
   ;   {:body "Failed to initiate an slack digest test." :status 500}))
 
   ([_jwtoken _medium _start]
-  {:body "Only 'email' digest testing is supported at this time." :status 501}))
+   {:body "Only 'email' digest testing is supported at this time." :status 501}))
 
 ;; ----- Request Routing -----
 
@@ -65,7 +67,7 @@
     (GET "/---error-test---" [] (/ 1 0))
     (GET "/---500-test---" [] {:body "Testing bad things." :status 500})
     (GET "/_/:medium/run" [medium :as request]
-      (test-digest request medium))))
+      (test-digest request (keyword medium)))))
 
 ;; ----- System Startup -----
 
