@@ -7,6 +7,7 @@
             [oc.lib.sentry.core :as sentry]
             [taoensso.timbre :as timbre]
             [ring.logger.timbre :refer (wrap-with-logger)]
+            [ring.middleware.keyword-params :refer (wrap-keyword-params)]
             [ring.middleware.params :refer (wrap-params)]
             [ring.middleware.reload :refer (wrap-reload)]
             [ring.middleware.cookies :refer (wrap-cookies)]
@@ -27,9 +28,9 @@
 
   ([request :guard map? medium]
    (let [{:keys [cookies query-params]} request
-         start-param (get query-params "start")
+         start-param (:start query-params)
          days-param (try
-                      (Integer/parseInt (get query-params "days"))
+                      (Integer/parseInt (:days query-params))
                       (catch java.lang.NumberFormatException _ false))
          start (cond ;; Use start parameter if present and non blank string
                      (and (seq start-param)
@@ -104,6 +105,7 @@
     ; important that this is second
     true              (sentry/wrap c/sentry-config)
     c/prod?           wrap-with-logger
+    true              wrap-keyword-params
     true              wrap-params
     true              wrap-cookies
     c/hot-reload      wrap-reload))
