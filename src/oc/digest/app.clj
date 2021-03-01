@@ -22,7 +22,7 @@
 
 ;; ----- Test Digest Sending -----
 
-(defonce cookie-name (str c/cookie-prefix "jwt"))
+(defn- cookie-name [] (str c/cookie-prefix "jwt"))
 
 (defun- test-digest
 
@@ -39,8 +39,8 @@
                      (and (number? days-param)
                           (pos? days-param))     (data/days-ago days-param)
                      ;; Default to 1 day ago
-                     :else                       (data/days-ago 1))]
-     (if-let* [jwtoken (-> cookies (get cookie-name) :value)
+                     :else                       (data/days-ago c/default-start-days-ago))]
+     (if-let* [jwtoken (-> cookies (get (cookie-name)) :value)
                _valid? (jwt/valid? jwtoken c/passphrase)]
        (test-digest jwtoken medium start)
        {:body (str "An unexpired login with a valid JWT cookie required for test digest request.\n\n"
