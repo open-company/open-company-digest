@@ -4,8 +4,6 @@
     [clojure.walk :refer (keywordize-keys)]
     [if-let.core :refer (if-let*)]
     [clj-time.core :as t]
-    [clj-time.coerce :as c]
-    [clj-time.format :as f]
     [clj-http.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
@@ -34,7 +32,7 @@
 (defn- start-for-org [org-id last-digests]
   (if-let [org-last-digest (first (filter #(= org-id (:org-id %)) last-digests))]
     (:timestamp org-last-digest)
-    (days-ago 1)))
+    (days-ago config/default-start-days-ago)))
 
 (defn- req [method url headers]
   (try
@@ -54,7 +52,7 @@
   each org the user is a team member of, and creates a digest request for each."
 
   ;; Need to get an org's activity from its activity link
-  ([org digest-link jwtoken {:keys [medium start digest-time digest-for-teams]} skip-send?]
+  ([org digest-link jwtoken {:keys [medium start digest-time updated-timestamp]} skip-send?]
    (timbre/debug "Retrieving digest " (:href digest-link) "for:" (d-r/log-token jwtoken))
    (let [;; Retrieve activity data for the digest
          response (req httpc/get
@@ -71,17 +69,18 @@
              (timbre/info "Skipping digest request (no updates) for:" (d-r/log-token jwtoken))
              false)
 
-           skip-send? (do
-                        (timbre/info "Skipping digest request (dry run) for:" (d-r/log-token jwtoken)
-                                     "with:" (log-response response))
-                        false)
+           skip-send?
+           (do
+             (timbre/info "Skipping digest request (dry run) for:" (d-r/log-token jwtoken) "with:" (log-response response))
+             false)
 
           ;; Trigger the digest request for the appropriate medium
-           :else (let [iso-start (oc-time/to-iso (c/from-long start))
-                       claims (-> jwtoken jwt/decode :claims (assoc :digest-last-at iso-start))]
-                   (d-r/send-trigger! (d-r/->trigger org result claims digest-time) claims medium)
-                  ;; Return the UUID of the org
-                   {:org-uuid (:uuid org) :start iso-start})))
+           :else
+           (let [claims (-> jwtoken jwt/decode :claims (assoc :start start))]
+             (d-r/send-trigger! (d-r/->trigger org result claims digest-time)
+                                claims medium)
+             ;; Return the UUID of the org
+             {:org-id (:uuid org) :timestamp updated-timestamp})))
 
       ;; Failed to get activity for the digest
        (do
@@ -90,10 +89,12 @@
          false))))
 
   ;; Need to get an org from its item link
-  ([org jwtoken {:keys [last] :as params} skip-send?]
-   (if-let* [start (start-for-org (:uuid org) last)
-             digest-link (hateoas/link-for (:links org) "digest" {} {:start start})]
-     (digest-request-for org digest-link jwtoken params skip-send?)
+  ([org jwtoken {:keys [latest-digest-deliveries] :as params} skip-send?]
+   (if-let* [start (start-for-org (:uuid org) latest-digest-deliveries)
+             digest-link (hateoas/link-for (:links org) "digest" {} {:start start})
+             updated-params (assoc params :start start
+                                          :updated-timestamp (oc-time/current-timestamp))]
+     (digest-request-for org digest-link jwtoken updated-params skip-send?)
      (timbre/error "No digest link found for org:" org)))
 
   ;; Need to get list of orgs from /

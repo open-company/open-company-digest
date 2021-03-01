@@ -23,8 +23,8 @@
   (:gen-class))
 
 (def DigestSent
-  {:org-uuid lib-schema/UniqueID
-   :start lib-schema/ISO8601})
+  {:org-id lib-schema/UniqueID
+   :timestamp lib-schema/ISO8601})
 
 ;; ----- State -----
 
@@ -42,14 +42,14 @@
    (try
      (let [medium  :email ;; Hardcode email digest for everybody (or (keyword (:digest-medium user)) :email)]
            digest-sent-list (data/digest-request-for (:jwtoken user) {:medium medium
-                                                                      :last (:latest-digest-deliveries user)
+                                                                      :latest-digest-deliveries (:latest-digest-deliveries user)
                                                                       :digest-time (or (:digest-time user) :morning)
                                                                       :digest-for-teams (:digest-for-teams user)}
                                                      skip-send?)]
        (doseq [sent-map digest-sent-list
                :when (and sent-map
                           (lib-schema/valid? DigestSent sent-map))]
-         (user-res/last-digest-at! conn (:user-id user) (:org-uuid sent-map) (:start sent-map))))
+         (user-res/last-digest-at! conn (:user-id user) (:org-id sent-map) (:timestamp sent-map))))
      (catch Exception e
       ;; Retry if we got an error after 1 second...
       (if (and (int? retry)
