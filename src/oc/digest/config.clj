@@ -76,3 +76,5 @@
 
 (defonce users-partition-size (Integer/parseInt (or (env :oc-digest-partition-size) "30")))
 (defonce partitions-sleep-ms (Integer/parseInt (or (env :oc-digest-partitions-sleep-ms) "3000")))
+
+(defonce default-start-days-ago (Integer/parseInt (or (env :oc-digest-default-start-days-ago) "1")))
