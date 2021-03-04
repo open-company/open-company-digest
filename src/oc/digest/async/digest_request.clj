@@ -13,7 +13,6 @@
             [oc.lib.user :as lib-user]
             [oc.lib.change :as change]
             [oc.lib.hateoas :as hateoas]
-            [oc.lib.text :as oc-text]
             [oc.digest.config :as config]))
 
 ;; ----- Schema -----
@@ -130,7 +129,7 @@
                          (assoc :secure-uuid (:secure-uuid post-data)))
         id-token (jwt/generate-id-token token-claims config/passphrase)
         comment-count (or (:count comments) 0)
-        new-comments (filterv #(pos? (compare (:created-at %) (:digest-last-at claims)))
+        new-comments (filterv #(pos? (compare (:created-at %) (:start claims)))
                         (:comments post-data))
         new-comment-label (when (seq new-comments)
                             (str (count new-comments) " NEW"))]
@@ -150,13 +149,6 @@
 
 (defn- posts-list [org-slug posts claims]
   (map #(post org-slug claims %) posts))
-
-;;  -- Boards --
-
-(defn- board [org-slug board]
-  (-> board
-   (select-keys [:name :slug :access :uuid :description :author :created-at])
-   (assoc :url (board-url org-slug (:slug board)))))
 
 ;; ----- Digest parts -----
 
