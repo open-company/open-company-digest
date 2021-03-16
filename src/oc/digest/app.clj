@@ -15,7 +15,6 @@
             [com.stuartsierra.component :as component]
             [oc.lib.jwt :as jwt]
             [oc.lib.api.common :as api-common]
-            [clojure.string :as string]
             [oc.digest.components :as components]
             [oc.digest.data :as data]
             [oc.digest.config :as c]))
@@ -85,10 +84,7 @@
     "Web URL: " c/ui-server-url "\n"
     "Log level: " c/log-level "\n"
     "Hot-reload: " c/hot-reload "\n"
-    "Sentry: " c/dsn "\n"
-    "  env: " c/sentry-env "\n"
-    (when-not (string/blank? c/sentry-release)
-      (str "  release: " c/sentry-release "\n"))
+    "Sentry: " c/sentry-config "\n"
     "\n"
     (when c/intro? "Ready to serve...\n"))))
 
