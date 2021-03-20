@@ -21,6 +21,13 @@
   (merge lib-schema/Author {
    :url lib-schema/NonBlankStr}))
 
+(def DigestLabel
+  {:name schema/Str
+   :slug schema/Str
+   :color lib-schema/HEXColor
+   :url lib-schema/NonBlankStr
+   schema/Keyword schema/Any})
+
 (def DigestPost
   {:uuid lib-schema/NonBlankStr
    :headline (schema/maybe schema/Str)
@@ -33,7 +40,8 @@
    :board-slug lib-schema/NonBlankStr
    :board-name lib-schema/NonBlankStr
    :board-uuid lib-schema/UniqueID
-   :board-url lib-schema/NonBlankStr})
+   :board-url lib-schema/NonBlankStr
+   (schema/optional-key :labels) (schema/maybe [DigestLabel])})
 
 (def DigestFollowingList
   {:url lib-schema/NonBlankStr
@@ -103,6 +111,9 @@
 
 ;;  -- Urls --
 
+(defn- label-url [org-slug label-slug]
+  (str (s/join "/" [config/ui-server-url org-slug "l" label-slug])))
+
 (defn- section-url [org-slug slug]
   (str (s/join "/" [config/ui-server-url org-slug slug])))
 
@@ -144,6 +155,7 @@
      :board-name (:board-name post-data)
      :board-slug (:board-slug post-data)
      :board-uuid (:board-uuid post-data)
+     :labels (mapv #(assoc % :url (label-url org-slug %)) (:labels post-data))
      :board-url (section-url org-slug (:board-slug post-data))}))
 
 (defn- posts-list [org-slug posts claims]

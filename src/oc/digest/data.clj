@@ -4,7 +4,8 @@
     [clojure.walk :refer (keywordize-keys)]
     [if-let.core :refer (if-let*)]
     [clj-time.core :as t]
-    [clj-http.client :as httpc]
+    ;; [clj-http.client :as httpc]
+    [org.httpkit.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
     [oc.lib.jwt :as jwt]
@@ -36,7 +37,7 @@
 
 (defn- req [method url headers]
   (try
-    (method url headers)
+    @(method url headers)
     (catch Exception e
       (timbre/warn e)
       (sentry/capture {:throwable e
@@ -44,6 +45,11 @@
                        :extra {:href url
                                :status (:status e)
                                :accept (:accept headers)}}))))
+
+(defn- req-error [jwtoken digest-link response]
+  (ex-info (format "Error requesting %s %d" (:href digest-link) (:status response)) {:status (:status response)
+                                                                                     :link digest-link
+                                                                                     :info (d-r/log-token jwtoken)}))
 
 ;; ----- Digest Request Generation -----
 
@@ -57,8 +63,8 @@
    (let [;; Retrieve activity data for the digest
          response (req httpc/get
                        (str config/storage-server-url (:href digest-link))
-                       {:headers {:authorization (str "Bearer " jwtoken)
-                                  :accept (:accept digest-link)}})]
+                       {:headers {"authorization" (str "Bearer " jwtoken)
+                                  "accept" (:accept digest-link)}})]
      (timbre/debug "Loading digest data:" (:href digest-link))
      (if (success? response)
        (let [{:keys [following] :as result} (-> response :body json/parse-string keywordize-keys :collection)]
@@ -84,8 +90,7 @@
 
       ;; Failed to get activity for the digest
        (do
-         (timbre/warn "Error requesting:" (:href digest-link) "for:" (d-r/log-token jwtoken)
-                      "status:" (:status response) "body:" (:body response))
+         (timbre/error (req-error jwtoken digest-link response))
          false))))
 
   ;; Need to get an org from its item link
@@ -102,8 +107,8 @@
    (timbre/debug "Retrieving entry-point for:" (d-r/log-token jwtoken))
    (let [response (req httpc/get
                        (str config/storage-server-url "/")
-                       {:headers {:authorization (str "Bearer " jwtoken)
-                                  :accept "application/vnd.collection+vnd.open-company.org+json;version=1"}})]
+                       {:headers {"authorization" (str "Bearer " jwtoken)
+                                  "accept" "application/vnd.collection+vnd.open-company.org+json;version=1"}})]
      (if (success? response)
        (let [filter-fn (if (seq digest-for-teams)
                          (partial filterv #((set digest-for-teams) (:team-id %)))
@@ -112,7 +117,6 @@
         ;; Do not parallelize: we need the returning list of orgs to keep track of the sent digest by user
          (mapv #(digest-request-for % jwtoken params skip-send?) orgs))
        (do
-         (timbre/warn "Error requesting:" config/storage-server-url "for:" (d-r/log-token jwtoken)
-                      "status:" (:status response) "body:" (:body response))
+         (timbre/error (req-error jwtoken {:href config/storage-server-url} response))
         ;; Return empty vec since no digest was actually sent
          [])))))

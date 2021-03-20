@@ -13,16 +13,16 @@
 
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
-    [org.clojure/clojure "1.10.2-alpha1"]
-    [org.clojure/tools.cli "1.0.194"] ; commandline parsing https://github.com/clojure/tools.cli
-    [http-kit "2.4.0"] ; Web client/server http://http-kit.org/
+    [org.clojure/clojure "1.10.3"]
+    [org.clojure/tools.cli "1.0.206"] ; commandline parsing https://github.com/clojure/tools.cli
+    [http-kit "2.5.3"] ; Web client/server http://http-kit.org/
     ;; Web application library https://github.com/ring-clojure/ring
-    [ring/ring-devel "2.0.0-alpha1"]
+    [ring/ring-devel "1.9.1"]
     ;; Web application library https://github.com/ring-clojure/ring
     ;; NB: clj-time pulled in by oc.lib
     ;; NB: joda-time pulled in by oc.lib via clj-time
     ;; NB: commons-codec pulled in by oc.lib
-    [ring/ring-core "2.0.0-alpha1" :exclusions [clj-time joda-time commons-codec]]
+    [ring/ring-core "1.9.1" :exclusions [clj-time joda-time]]
     ;; Ring logging https://github.com/nberger/ring-logger-timbre
     ;; NB: com.taoensso/encore pulled in by oc.lib
     ;; NB: com.taoensso/timbre pulled in by oc.lib
@@ -30,7 +30,7 @@
     ;; Web routing https://github.com/weavejester/compojure
     [compojure "1.6.2"]
     ;; HTTP client https://github.com/dakrone/clj-http
-    [clj-http "3.10.2"]
+    ;; [clj-http "3.12.1"]
     ;; Simple scheduler https://github.com/juxt/tick
     ;; NB: Don't upgrade to +0.4, it's not backward compatible as timeline/clock/schedele namespaces all deprecated
     [tick "0.3.5"]
@@ -43,7 +43,7 @@
     ;; ***************** (JWT schema changes, more info here: *****************
     ;; ******* https://github.com/open-company/open-company-lib/pull/82) ******
     ;; ************************************************************************
-    [open-company/lib "0.17.35-alpha3"]
+    [open-company/lib "0.18.0-alpha1" :exclusions [org.clojure/tools.logging]]
     ;; ************************************************************************
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
@@ -60,7 +60,7 @@
     ;; Environ - Get environment settings from different sources https://github.com/weavejester/environ
 
     ;; General data-binding functionality for Jackson: works on core streaming API https://github.com/FasterXML/jackson-databind
-    [com.fasterxml.jackson.core/jackson-databind "2.11.2"]
+    [com.fasterxml.jackson.core/jackson-databind "2.12.2"]
   ]
 
   :plugins [
@@ -81,7 +81,7 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.9" :exclusions [joda-time clj-time commons-codec]]
+        [midje "1.9.10" :exclusions [joda-time clj-time commons-codec]]
       ]
       :plugins [
         ;; Example-based testing https://github.com/marick/lein-midje
@@ -112,7 +112,7 @@
         ;; pretty-print the lein project map https://github.com/technomancy/leiningen/tree/master/lein-pprint
         [lein-pprint "1.3.2"]
         ;; Check for outdated dependencies https://github.com/xsc/lein-ancient
-        [lein-ancient "0.6.15"]
+        [lein-ancient "1.0.0-RC3"]
         ;; Catch spelling mistakes in docs and docstrings https://github.com/cldwalker/lein-spell
         [lein-spell "0.1.0"]
         ;; Dead code finder https://github.com/venantius/yagni
