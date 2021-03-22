@@ -47,9 +47,10 @@
                                :accept (:accept headers)}}))))
 
 (defn- req-error [jwtoken digest-link response]
-  (ex-info (format "Error requesting %s %d" (:href digest-link) (:status response)) {:status (:status response)
-                                                                                     :link digest-link
-                                                                                     :info (d-r/log-token jwtoken)}))
+  (ex-info (format "Error requesting %s %s" (:href digest-link) (str (:status response)))
+           {:status (:status response)
+            :link digest-link
+            :info (d-r/log-token jwtoken)}))
 
 ;; ----- Digest Request Generation -----
 
