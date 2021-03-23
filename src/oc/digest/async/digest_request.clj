@@ -277,9 +277,7 @@
     (if (lib-schema/valid? trigger-schema medium-trigger)
       ;; All is well, do the needful
       (do
-        (timbre/info "Digest request to queue:" queue "for:" (log-claims claims))
         (timbre/trace "Digest request:" trigger "for:" (log-claims claims))
-        (timbre/info "Sending request to queue:" queue "for:" (log-claims claims))
         (sqs/send-message
           {:access-key config/aws-access-key-id
            :secret-key config/aws-secret-access-key}
