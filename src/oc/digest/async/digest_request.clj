@@ -43,10 +43,6 @@
    :board-url lib-schema/NonBlankStr
    (schema/optional-key :labels) (schema/maybe [DigestLabel])})
 
-(def DigestFollowingList
-  {:url lib-schema/NonBlankStr
-   :following-list (schema/maybe [DigestPost])})
-
 (def DigestTrigger
   {:type (schema/enum :digest)
    :org-slug lib-schema/NonBlankStr
@@ -65,8 +61,11 @@
    (schema/optional-key :logo-height) schema/Int
    (schema/optional-key :digest-label) [schema/Any]
    (schema/optional-key :digest-subject) schema/Str
-   :following DigestFollowingList
-   :replies (schema/maybe {(schema/optional-key :url) schema/Str})})
+   :home-url schema/Str
+   :following (schema/maybe [DigestPost])
+   :unfollowing (schema/maybe [DigestPost])
+   (schema/optional-key :view-more-url) schema/Str
+   :replies-url schema/Str})
 
 (def EmailTrigger (merge DigestTrigger {
   :email lib-schema/EmailAddress}))
@@ -240,7 +239,7 @@
 (defn ->trigger [{logo-url :logo-url org-slug :slug org-name :name org-uuid :uuid team-id :team-id
                   content-visibility :content-visibility
                   {light-brand-color :light} :brand-color :as org}
-                 {:keys [following]}
+                 {:keys [following unfollowing has-more]}
                  claims
                  digest-time]
   (let [fixed-content-visibility (or content-visibility {})
@@ -249,7 +248,8 @@
                          (assoc :short-name (lib-user/short-name-for claims))
                          (assoc :org-uuid org-uuid)
                          (assoc :disallow-secure-links (:disallow-secure-links fixed-content-visibility)))
-        date-string (digest-date)]
+        date-string (digest-date)
+        home-url (section-url org-slug "home")]
     (cond-> {:type :digest
              :org-slug org-slug
              :org-name org-name
@@ -262,9 +262,11 @@
      (map? light-brand-color) (assoc :org-light-brand-color light-brand-color)
      true (assoc :digest-label (digest-label fixed-claims digest-time date-string org-slug (:primary light-brand-color)))
      true (assoc :digest-subject (digest-subject digest-time date-string org-name))
-     true (assoc :following {:following-list (posts-list org-slug following fixed-claims)
-                             :url (section-url org-slug "home")})
-     true (assoc :replies {:url (section-url org-slug "activity")}))))
+     true (assoc :home-url home-url)
+     true (assoc :following (posts-list org-slug following fixed-claims))
+     true (assoc :unfollowing (posts-list org-slug unfollowing fixed-claims))
+     has-more (assoc :view-more-url home-url)
+     true (assoc :replies-url (section-url org-slug "activity")))))
 
 (defn send-trigger! [trigger claims medium]
   (schema/validate DigestTrigger trigger) ; sanity check

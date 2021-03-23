@@ -88,7 +88,7 @@
   ([conn :guard lib-schema/conn? user-list :guard partition-users-list? skip-send?]
    (let [cnt (atom 0)]
      (doseq [users-part (partition-all c/users-partition-size user-list)]
-       (timbre/info "Partition" (swap! cnt inc))
+       (timbre/debug "Partition" (swap! cnt inc))
        (digest-run conn users-part skip-send?)
        (timbre/info "Partition" @cnt "done.")
        (Thread/sleep c/partitions-sleep-ms))))

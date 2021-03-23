@@ -6,6 +6,7 @@
             [if-let.core :refer (if-let*)]
             [oc.lib.sentry.core :as sentry]
             [taoensso.timbre :as timbre]
+            [clojure.walk :refer (keywordize-keys)]
             [ring.logger.timbre :refer (wrap-with-logger)]
             [ring.middleware.keyword-params :refer (wrap-keyword-params)]
             [ring.middleware.params :refer (wrap-params)]
@@ -27,9 +28,10 @@
 
   ([request :guard map? medium]
    (let [{:keys [cookies query-params]} request
-         start-param (:start query-params)
+         key-params (keywordize-keys query-params)
+         start-param (:start key-params)
          days-param (try
-                      (Integer/parseInt (:days query-params))
+                      (Integer/parseInt (:days key-params))
                       (catch java.lang.NumberFormatException _ false))
          start (cond ;; Use start parameter if present and non blank string
                      (and (seq start-param)
