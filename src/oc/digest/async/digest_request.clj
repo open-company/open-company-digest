@@ -264,6 +264,7 @@
       ;; All is well, do the needful
       (do
         (timbre/trace "Digest request:" trigger "for:" (log-claims claims))
+        (timbre/debug "Sending request to queue:" queue "for:" (log-claims claims))
         (sqs/send-message
           {:access-key config/aws-access-key-id
            :secret-key config/aws-secret-access-key}
