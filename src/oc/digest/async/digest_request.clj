@@ -24,7 +24,6 @@
 (def DigestLabel
   {:name schema/Str
    :slug schema/Str
-   :color lib-schema/HEXColor
    :url lib-schema/NonBlankStr
    schema/Keyword schema/Any})
 
