@@ -28,7 +28,7 @@
        (< 199 status 300)))
 
 (defn- log-response [response]
-  (str "digest of " (count (:following response)) " followed posts, " (count (:replies response)) " replies posts and " (count (:new-boards response)) " new boards."))
+  (str "digest of "  (:total-following-count response) " posts in followed topics and " (count (:total-unfollowing-count response)) " posts in unfollowed topics."))
 
 (defn- start-for-org [org-id last-digests]
   (if-let [org-last-digest (first (filter #(= org-id (:org-id %)) last-digests))]
@@ -68,10 +68,10 @@
                                   "accept" (:accept digest-link)}})]
      (timbre/debug "Loading digest data:" (:href digest-link))
      (if (success? response)
-       (let [{:keys [following] :as result} (-> response :body json/parse-string keywordize-keys :collection)]
+       (let [{:keys [total-count] :as result} (-> response :body json/parse-string keywordize-keys :collection)]
          (cond
 
-           (empty? following)
+           (zero? total-count)
            (do
              (timbre/info "Skipping digest request (no updates) for:" (d-r/log-token jwtoken))
              false)
