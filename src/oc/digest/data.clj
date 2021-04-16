@@ -23,9 +23,9 @@
 ;; ----- Utility Functions -----
 
 (defn- success? [{status :status :as response}]
-  (and response
+  (and (map? response)
        status
-       (< 199 status 300)))
+       (< 199 status 400))) ;; 3xx states are redirects so no need to report as errors
 
 (defn- log-response [response]
   (str "digest of "  (:total-following-count response) " posts in followed topics and " (count (:total-unfollowing-count response)) " posts in unfollowed topics."))
@@ -47,8 +47,8 @@
                                :accept (:accept headers)}}))))
 
 (defn- req-error [jwtoken digest-link response]
-  (ex-info (format "Error requesting %s %s" (:href digest-link) (str (:status response)))
-           {:status (:status response)
+  (ex-info (format "Error loading data from %s response status %s" (:href digest-link) (str (:status response)))
+           {:status (if (nil? (:status response)) "nil" (:status response))
             :link digest-link
             :info (d-r/log-token jwtoken)}))
 
