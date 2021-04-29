@@ -21,10 +21,10 @@
 
 ;; ----- Utility Functions -----
 
-(defn- success? [{status :status :as response}]
-  (and (map? response)
-       status
-       (< 199 status 400))) ;; 3xx states are redirects so no need to report as errors
+(defn- success? [{status :status error :error :as _response}]
+  (or error
+      (and status
+           (< 199 status 400)))) ;; 2xx good, 3xx states are redirects so no need to report as errors
 
 (defn- log-response [response]
   (str "digest of "  (:total-following-count response) " posts in followed topics and " (count (:total-unfollowing-count response)) " posts in unfollowed topics."))
@@ -34,20 +34,25 @@
     (:timestamp org-last-digest)
     (days-ago config/default-start-days-ago)))
 
-(defn- req [method url headers]
+(def ^{:private true} req-defaults
+  {:keepalive 20000 ;; Default httpkit keepalive is 120000ms, reduce to 20s
+   :timeout 20000}) ;; Default timeout is 60000ms, reduce to 20s
+
+(defn- req [method url options]
   (try
-    @(method url headers)
+    @(method url (merge req-defaults options))
     (catch Exception e
       (timbre/warn e)
       (sentry/capture {:throwable e
                        :message (str "HTTP request failed: " (:status e))
                        :extra {:href url
                                :status (:status e)
-                               :accept (:accept headers)}}))))
+                               :accept (get-in options [:headers "accept"])}}))))
 
-(defn- req-error [jwtoken digest-link response]
-  (ex-info (format "Error loading data from %s response status %s" (:href digest-link) (str (:status response)))
-           {:status (if (nil? (:status response)) "nil" (:status response))
+(defn- req-error [jwtoken digest-link {status :status error :error}]
+  (ex-info (format "Error loading data from %s response status %s" (:href digest-link) (str status))
+           {:status (if (nil? status) "nil" status)
+            :error (or error "-")
             :link digest-link
             :info (d-r/log-token jwtoken)}))
 
