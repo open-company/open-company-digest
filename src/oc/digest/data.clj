@@ -4,7 +4,7 @@
     [clojure.walk :refer (keywordize-keys)]
     [if-let.core :refer (if-let*)]
     [clj-time.core :as t]
-    [org.httpkit.client :as httpc]
+    [clj-http.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
     [oc.lib.jwt :as jwt]
@@ -35,19 +35,18 @@
     (days-ago config/default-start-days-ago)))
 
 (def ^{:private true} req-defaults
-  {:keepalive 20000 ;; Default httpkit keepalive is 120000ms, reduce to 20s
-   :timeout 20000}) ;; Default timeout is 60000ms, reduce to 20s
+  {:connection-timeout 20000}) ;; 20s of timeout
 
-(defn- req [method url options]
+(defn- req [method url req-options]
   (try
-    @(method url (merge req-defaults options))
+    (method url (merge req-defaults req-options))
     (catch Exception e
       (timbre/warn e)
       (sentry/capture {:throwable e
                        :message (str "HTTP request failed: " (:status e))
                        :extra {:href url
                                :status (:status e)
-                               :accept (get-in options [:headers "accept"])}}))))
+                               :accept (get-in req-options [:headers "accept"])}}))))
 
 (defn- req-error [jwtoken digest-link {status :status error :error}]
   (ex-info (format "Error loading data from %s response status %s" (:href digest-link) (str status))

@@ -30,7 +30,7 @@
     ;; Web routing https://github.com/weavejester/compojure
     [compojure "1.6.2"]
     ;; HTTP client https://github.com/dakrone/clj-http
-    ;; [clj-http "3.12.1"]
+    [clj-http "3.12.1"]
     ;; Simple scheduler https://github.com/juxt/tick
     ;; NB: Don't upgrade to +0.4, it's not backward compatible as timeline/clock/schedele namespaces all deprecated
     [tick "0.3.5"]
