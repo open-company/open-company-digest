@@ -4,7 +4,6 @@
     [clojure.walk :refer (keywordize-keys)]
     [if-let.core :refer (if-let*)]
     [clj-time.core :as t]
-    ;; [clj-http.client :as httpc]
     [org.httpkit.client :as httpc]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
