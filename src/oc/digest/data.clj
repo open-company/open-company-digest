@@ -46,6 +46,8 @@
                        :message (str "HTTP request failed: " (:status e))
                        :extra {:href url
                                :status (:status e)
+                               :reason (ex-message e)
+                               :ex-data (ex-data e)
                                :accept (get-in req-options [:headers "accept"])}}))))
 
 (defn- req-error [jwtoken digest-link {status :status error :error}]
