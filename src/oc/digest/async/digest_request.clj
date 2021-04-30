@@ -153,7 +153,7 @@
      :board-name (:board-name post-data)
      :board-slug (:board-slug post-data)
      :board-uuid (:board-uuid post-data)
-     :labels (mapv #(assoc % :url (label-url org-slug %)) (:labels post-data))
+     :labels (mapv #(assoc % :url (label-url org-slug (:slug %))) (:labels post-data))
      :board-url (section-url org-slug (:board-slug post-data))}))
 
 (defn- posts-list [org-slug posts claims]
