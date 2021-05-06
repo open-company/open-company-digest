@@ -63,8 +63,8 @@
    :home-url schema/Str
    :following (schema/maybe [DigestPost])
    :unfollowing (schema/maybe [DigestPost])
-   (schema/optional-key :view-more-url) schema/Str
-   :replies-url schema/Str})
+   (schema/optional-key :view-more-url) (schema/maybe schema/Str)
+   :replies-url (schema/maybe schema/Str)})
 
 (def EmailTrigger (merge DigestTrigger {
   :email lib-schema/EmailAddress}))
