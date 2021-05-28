@@ -43,7 +43,7 @@
     ;; ***************** (JWT schema changes, more info here: *****************
     ;; ******* https://github.com/open-company/open-company-lib/pull/82) ******
     ;; ************************************************************************
-    [open-company/lib "0.18.0-alpha7" :exclusions [org.clojure/tools.logging]]
+    [open-company/lib "0.18.0-alpha8" :exclusions [org.clojure/tools.logging]]
     ;; ************************************************************************
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
